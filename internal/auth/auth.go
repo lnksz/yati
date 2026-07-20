@@ -34,7 +34,7 @@ func runPass(path string) (string, error) {
 	cmd := exec.Command("pass", "show", path)
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	
+
 	if err := cmd.Run(); err != nil {
 		return "", err
 	}

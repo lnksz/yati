@@ -16,8 +16,10 @@ type listItem struct {
 	date     string
 }
 
-func (i listItem) Title() string       { return i.desc }
-func (i listItem) Description() string { return fmt.Sprintf("Date: %s | Duration: %s", i.date, i.duration.Round(time.Second)) }
+func (i listItem) Title() string { return i.desc }
+func (i listItem) Description() string {
+	return fmt.Sprintf("Date: %s | Duration: %s", i.date, i.duration.Round(time.Second))
+}
 func (i listItem) FilterValue() string { return i.desc + " " + i.date }
 
 type listModel struct {
@@ -116,7 +118,7 @@ func runInteractiveList(client *toggl.Client, args []string) {
 		if e.Duration < 0 {
 			dur = time.Since(e.Start)
 		}
-		
+
 		desc := e.Description
 		if desc == "" {
 			desc = "(no description)"

@@ -90,8 +90,8 @@ func (c *Client) GetCurrentTimeEntry() (*TimeEntry, error) {
 	if err := c.do(req, &entry); err != nil {
 		return nil, err
 	}
-	
-	// API returns an empty response body if there is no running time entry, 
+
+	// API returns an empty response body if there is no running time entry,
 	// which json.Decode handles as an empty struct, but wait, usually Toggl returns null or empty string.
 	// Actually, if there is no current time entry, json decode might fail on empty body or return empty TimeEntry.
 	// We'll check if ID is 0.
@@ -151,10 +151,10 @@ func (c *Client) GetProjects(workspaceID int64) ([]Project, error) {
 
 func (c *Client) GetTimeEntries(startDate, endDate time.Time) ([]TimeEntry, error) {
 	// Toggl requires start_date and end_date query params
-	path := fmt.Sprintf("/me/time_entries?start_date=%s&end_date=%s", 
-		startDate.UTC().Format(time.RFC3339), 
+	path := fmt.Sprintf("/me/time_entries?start_date=%s&end_date=%s",
+		startDate.UTC().Format(time.RFC3339),
 		endDate.UTC().Format(time.RFC3339))
-	
+
 	req, err := c.req(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err

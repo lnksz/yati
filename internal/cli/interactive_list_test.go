@@ -24,7 +24,7 @@ func makeMixedItems() []list.Item {
 	return []list.Item{
 		listItem{desc: "meeting", duration: 54*time.Minute + 30*time.Second, date: "2026-01-01 09:00"},
 		listItem{desc: "coding", duration: 2*time.Hour + 15*time.Second, date: "2026-01-01 10:00"},
-		listItem{desc: "review", duration: 45*time.Second, date: "2026-01-01 11:00"},
+		listItem{desc: "review", duration: 45 * time.Second, date: "2026-01-01 11:00"},
 	}
 }
 

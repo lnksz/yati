@@ -19,7 +19,7 @@ type taskItem struct {
 	project   string
 }
 
-func (i taskItem) Title() string       { return i.desc }
+func (i taskItem) Title() string { return i.desc }
 func (i taskItem) Description() string {
 	if i.project != "" {
 		return "Project: " + i.project

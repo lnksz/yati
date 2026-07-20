@@ -28,7 +28,7 @@ func Load() (*Config, error) {
 	if envCfgPath := os.Getenv("YATI_CONFIG"); envCfgPath != "" {
 		cfgPath = envCfgPath
 	}
-	
+
 	if cfgPath != "" {
 		data, err := os.ReadFile(cfgPath)
 		if err == nil {

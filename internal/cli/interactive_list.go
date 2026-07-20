@@ -12,12 +12,12 @@ import (
 
 type listItem struct {
 	desc     string
-	duration string
+	duration time.Duration
 	date     string
 }
 
 func (i listItem) Title() string       { return i.desc }
-func (i listItem) Description() string { return fmt.Sprintf("Date: %s | Duration: %s", i.date, i.duration) }
+func (i listItem) Description() string { return fmt.Sprintf("Date: %s | Duration: %s", i.date, i.duration.Round(time.Second)) }
 func (i listItem) FilterValue() string { return i.desc + " " + i.date }
 
 type listModel struct {
@@ -40,7 +40,7 @@ func (m listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		h, v := docStyle.GetFrameSize()
-		m.list.SetSize(msg.Width-h, msg.Height-v)
+		m.list.SetSize(msg.Width-h, msg.Height-v-1)
 	}
 
 	var cmd tea.Cmd
@@ -55,7 +55,21 @@ func (m listModel) View() string {
 	if m.quitting {
 		return ""
 	}
-	return docStyle.Render(m.list.View())
+	return docStyle.Render(m.list.View() + "\n" + formatDuration(visibleDurationSum(m.list)))
+}
+
+func visibleDurationSum(l list.Model) time.Duration {
+	var total time.Duration
+	for _, item := range l.VisibleItems() {
+		if li, ok := item.(listItem); ok {
+			total += li.duration
+		}
+	}
+	return total
+}
+
+func formatDuration(d time.Duration) string {
+	return "Total duration: " + d.Round(time.Second).String()
 }
 
 func runInteractiveList(client *toggl.Client, args []string) {
@@ -109,7 +123,7 @@ func runInteractiveList(client *toggl.Client, args []string) {
 		}
 		items = append(items, listItem{
 			desc:     desc,
-			duration: dur.String(),
+			duration: dur,
 			date:     e.Start.Local().Format("2006-01-02 15:04"),
 		})
 	}

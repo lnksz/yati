@@ -16,6 +16,15 @@ func TestFishCompletions_ContainsAllSubcommands(t *testing.T) {
 	}
 }
 
+func TestFishCompletions_ContainsAliases(t *testing.T) {
+	aliases := []string{"s", "S", "c", "w", "ls"}
+	for _, alias := range aliases {
+		if !strings.Contains(fishCompletions, alias) {
+			t.Errorf("Missing alias: %s", alias)
+		}
+	}
+}
+
 func TestFishCompletions_ContainsGlobalFlags(t *testing.T) {
 	flags := []string{"-l token", "-l pass-path"}
 	for _, flag := range flags {

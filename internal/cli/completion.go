@@ -30,18 +30,23 @@ complete -c yati -l pass-path -d 'Path to token in pass'
 
 # Subcommands (only when no subcommand given yet)
 complete -c yati -n __yati_needs_subcommand -a start -d 'Start a new time entry'
+complete -c yati -n __yati_needs_subcommand -a s -d 'Start a new time entry'
 complete -c yati -n __yati_needs_subcommand -a stop -d 'Stop the current time entry'
+complete -c yati -n __yati_needs_subcommand -a S -d 'Stop the current time entry'
 complete -c yati -n __yati_needs_subcommand -a continue -d 'Continue the most recently stopped time entry'
+complete -c yati -n __yati_needs_subcommand -a c -d 'Continue the most recently stopped time entry'
 complete -c yati -n __yati_needs_subcommand -a show -d 'Show the current running time entry'
+complete -c yati -n __yati_needs_subcommand -a w -d 'Show the current running time entry'
 complete -c yati -n __yati_needs_subcommand -a interactive -d 'Start a task interactively'
 complete -c yati -n __yati_needs_subcommand -a list -d 'List tasks for a period'
+complete -c yati -n __yati_needs_subcommand -a ls -d 'List tasks for a period'
 complete -c yati -n __yati_needs_subcommand -a completion -d 'Output shell completion script'
 
 # start flags
-complete -c yati -n '__yati_subcommand_is start' -s p -d 'Project ID'
+complete -c yati -n '__yati_subcommand_is start s' -s p -d 'Project ID'
 
 # list period argument
-complete -c yati -n '__yati_subcommand_is list' -a '(__yati_list_periods)' -d 'Period'
+complete -c yati -n '__yati_subcommand_is list ls' -a '(__yati_list_periods)' -d 'Period'
 `
 
 func PrintFishCompletions(w io.Writer) {

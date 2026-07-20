@@ -8,7 +8,7 @@ import (
 )
 
 func TestFishCompletions_ContainsAllSubcommands(t *testing.T) {
-	subcommands := []string{"start", "stop", "continue", "interactive", "list", "completion"}
+	subcommands := []string{"start", "stop", "continue", "show", "interactive", "list", "completion"}
 	for _, subcmd := range subcommands {
 		if !strings.Contains(fishCompletions, subcmd) {
 			t.Errorf("Missing subcommand: %s", subcmd)

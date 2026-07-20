@@ -27,6 +27,8 @@ func ExecuteTo(cfg *config.Config, token string, args []string, stdout, stderr i
 		runStop(client, args[1:])
 	case "continue":
 		runContinue(client, args[1:])
+	case "show":
+		runShow(client, args[1:])
 	case "interactive":
 		runInteractiveStart(client, args[1:])
 	case "list":
@@ -43,6 +45,7 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "  start       Start a new time entry")
 	fmt.Fprintln(w, "  stop        Stop the current time entry")
 	fmt.Fprintln(w, "  continue    Continue the most recently stopped time entry")
+	fmt.Fprintln(w, "  show        Show the current running time entry")
 	fmt.Fprintln(w, "  interactive Start a task interactively")
 	fmt.Fprintln(w, "  list        List tasks for the day (d), work-week (w), or month (m)")
 	fmt.Fprintln(w, "  completion  Output shell completion script")

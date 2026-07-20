@@ -18,3 +18,17 @@ CLI for *my* [toggl](https://engineering.toggl.com/docs/track/) usage
 
 **NOTE**: From the get-go I only target whatever I need from toggl, this won't
 be a *full-client* of any sort
+
+## Fish Shell Completions
+
+Install completions for [Fish shell](https://fishshell.com/):
+
+```fish
+yati completion fish > ~/.config/fish/completions/yati.fish
+```
+
+Or use it directly in your session:
+
+```fish
+yati completion fish | source
+```

@@ -2,16 +2,20 @@ package cli
 
 import (
 	"fmt"
-	"os"
+	"io"
 
 	"yati/internal/config"
 	"yati/internal/toggl"
 )
 
 func Execute(cfg *config.Config, token string, args []string) {
+	ExecuteTo(cfg, token, args, io.Discard, io.Discard)
+}
+
+func ExecuteTo(cfg *config.Config, token string, args []string, stdout, stderr io.Writer) {
 	if len(args) < 1 {
-		printUsage()
-		os.Exit(1)
+		PrintUsage(stdout)
+		return
 	}
 
 	client := toggl.NewClient(token)
@@ -28,18 +32,18 @@ func Execute(cfg *config.Config, token string, args []string) {
 	case "list":
 		runInteractiveList(client, args[1:])
 	default:
-		fmt.Printf("Unknown subcommand: %s\n", args[0])
-		printUsage()
-		os.Exit(1)
+		fmt.Fprintf(stderr, "Unknown subcommand: %s\n", args[0])
+		PrintUsage(stderr)
 	}
 }
 
-func printUsage() {
-	fmt.Println("Usage: yati <subcommand> [flags]")
-	fmt.Println("Subcommands:")
-	fmt.Println("  start      Start a new time entry")
-	fmt.Println("  stop       Stop the current time entry")
-	fmt.Println("  continue   Continue the most recently stopped time entry")
-	fmt.Println("  interactive Start a task interactively")
-	fmt.Println("  list       List tasks for the day (d), work-week (w), or month (m)")
+func PrintUsage(w io.Writer) {
+	fmt.Fprintln(w, "Usage: yati <subcommand> [flags]")
+	fmt.Fprintln(w, "Subcommands:")
+	fmt.Fprintln(w, "  start       Start a new time entry")
+	fmt.Fprintln(w, "  stop        Stop the current time entry")
+	fmt.Fprintln(w, "  continue    Continue the most recently stopped time entry")
+	fmt.Fprintln(w, "  interactive Start a task interactively")
+	fmt.Fprintln(w, "  list        List tasks for the day (d), work-week (w), or month (m)")
+	fmt.Fprintln(w, "  completion  Output shell completion script")
 }

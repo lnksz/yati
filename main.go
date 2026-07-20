@@ -1,10 +1,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
 	"yati/internal/auth"
+	"yati/internal/cli"
 	"yati/internal/config"
 )
 
@@ -17,12 +19,13 @@ func main() {
 
 	cfg.ParseFlags()
 
-	// Ensure we can get a token, but don't print it obviously
-	_, err = auth.GetToken(cfg)
+	// Ensure we can get a token
+	token, err := auth.GetToken(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting Toggl API token: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Println("YATI initialized successfully. Implement subcommands next.")
+	// We use flag.Args() because flag.Parse() strips global flags
+	cli.Execute(cfg, token, flag.Args())
 }

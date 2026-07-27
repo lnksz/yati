@@ -72,11 +72,13 @@ func TestFormatDuration_Rounding(t *testing.T) {
 		input    time.Duration
 		expected string
 	}{
-		{0, "Total duration: 0s"},
-		{300 * time.Millisecond, "Total duration: 0s"},
-		{500 * time.Millisecond, "Total duration: 1s"},
-		{59*time.Minute + 59*time.Second + 999*time.Millisecond, "Total duration: 1h0m0s"},
-		{1*time.Hour + 30*time.Minute + 45*time.Second, "Total duration: 1h30m45s"},
+		{0, "0s"},
+		{300 * time.Millisecond, "0s"},
+		{500 * time.Millisecond, "1s"},
+		{60 * time.Second, "1m0s"},
+		{3604 * time.Second, "1h0m4s"},
+		{59*time.Minute + 59*time.Second + 999*time.Millisecond, "1h0m0s"},
+		{1*time.Hour + 30*time.Minute + 45*time.Second, "1h30m45s"},
 	}
 	for _, tt := range tests {
 		got := formatDuration(tt.input)

@@ -18,7 +18,7 @@ type listItem struct {
 
 func (i listItem) Title() string { return i.desc }
 func (i listItem) Description() string {
-	return fmt.Sprintf("Date: %s | Duration: %s", i.date, i.duration.Round(time.Second))
+	return fmt.Sprintf("Date: %s | Duration: %s", i.date, formatDuration(i.duration))
 }
 func (i listItem) FilterValue() string { return i.desc + " " + i.date }
 
@@ -57,7 +57,7 @@ func (m listModel) View() string {
 	if m.quitting {
 		return ""
 	}
-	return docStyle.Render(m.list.View() + "\n" + formatDuration(visibleDurationSum(m.list)))
+	return docStyle.Render(m.list.View() + "\nTotal duration: " + formatDuration(visibleDurationSum(m.list)))
 }
 
 func visibleDurationSum(l list.Model) time.Duration {
@@ -71,7 +71,7 @@ func visibleDurationSum(l list.Model) time.Duration {
 }
 
 func formatDuration(d time.Duration) string {
-	return "Total duration: " + d.Round(time.Second).String()
+	return d.Round(time.Second).String()
 }
 
 func runInteractiveList(client *toggl.Client, args []string) {

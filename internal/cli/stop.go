@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"yati/internal/toggl"
 )
@@ -24,5 +25,5 @@ func runStop(client *toggl.Client, args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Stopped: %s (Duration: %ds)\n", stopped.Description, stopped.Duration)
+	fmt.Printf("Stopped: %s (Duration: %s)\n", stopped.Description, formatDuration(time.Duration(stopped.Duration)*time.Second))
 }

@@ -55,6 +55,6 @@ func runShow(client *toggl.Client, args []string) {
 
 	fmt.Printf("Name: %s\n", name)
 	fmt.Printf("Since: %s\n", since.Format("2006-01-02 15:04:05"))
-	fmt.Printf("Duration: %s\n", duration.Truncate(time.Second))
+	fmt.Printf("Duration: %s\n", formatDuration(duration))
 	fmt.Printf("Project: %s\n", project)
 }

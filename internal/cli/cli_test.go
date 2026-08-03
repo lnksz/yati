@@ -20,6 +20,7 @@ func TestPrintUsage_ShowsAliases(t *testing.T) {
 		{"stop alias", "S", "(S)"},
 		{"continue alias", "c", "(c)"},
 		{"show alias", "w", "(w)"},
+		{"interactive alias", "i", "(i)"},
 		{"list alias", "ls", "(ls)"},
 	}
 

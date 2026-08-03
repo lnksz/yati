@@ -17,7 +17,7 @@ func TestFishCompletions_ContainsAllSubcommands(t *testing.T) {
 }
 
 func TestFishCompletions_ContainsAliases(t *testing.T) {
-	aliases := []string{"s", "S", "c", "w", "ls"}
+	aliases := []string{"s", "S", "c", "w", "i", "ls"}
 	for _, alias := range aliases {
 		if !strings.Contains(fishCompletions, alias) {
 			t.Errorf("Missing alias: %s", alias)

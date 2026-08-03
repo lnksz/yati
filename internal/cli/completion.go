@@ -38,6 +38,7 @@ complete -c yati -n __yati_needs_subcommand -a c -d 'Continue the most recently 
 complete -c yati -n __yati_needs_subcommand -a show -d 'Show the current running time entry'
 complete -c yati -n __yati_needs_subcommand -a w -d 'Show the current running time entry'
 complete -c yati -n __yati_needs_subcommand -a interactive -d 'Start a task interactively'
+complete -c yati -n __yati_needs_subcommand -a i -d 'Start a task interactively'
 complete -c yati -n __yati_needs_subcommand -a list -d 'List tasks for a period'
 complete -c yati -n __yati_needs_subcommand -a ls -d 'List tasks for a period'
 complete -c yati -n __yati_needs_subcommand -a completion -d 'Output shell completion script'

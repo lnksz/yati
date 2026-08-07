@@ -44,7 +44,7 @@ complete -c yati -n __yati_needs_subcommand -a ls -d 'List tasks for a period'
 complete -c yati -n __yati_needs_subcommand -a completion -d 'Output shell completion script'
 
 # start flags
-complete -c yati -n '__yati_subcommand_is start s' -s p -d 'Project ID'
+complete -c yati -n '__yati_subcommand_is start s' -s p -d 'Toggl project, or pick interactively'
 
 # list period argument
 complete -c yati -n '__yati_subcommand_is list ls' -a '(__yati_list_periods)' -d 'Period'

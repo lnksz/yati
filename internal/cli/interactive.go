@@ -76,6 +76,10 @@ func (m startModel) View() string {
 	return docStyle.Render(m.list.View())
 }
 
+func interactiveHistoryStart(endDate time.Time) time.Time {
+	return endDate.AddDate(0, -6, 0)
+}
+
 func runInteractiveStart(client *toggl.Client, args []string) {
 	fmt.Println("Fetching recent tasks and projects...")
 	me, err := client.GetMe()
@@ -86,7 +90,7 @@ func runInteractiveStart(client *toggl.Client, args []string) {
 	workspaceID := me.DefaultWorkspace
 
 	endDate := time.Now()
-	startDate := endDate.Add(-14 * 24 * time.Hour) // Last 14 days
+	startDate := interactiveHistoryStart(endDate)
 
 	entries, err := client.GetTimeEntries(startDate, endDate)
 	if err != nil {

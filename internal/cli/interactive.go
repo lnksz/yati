@@ -77,7 +77,7 @@ func (m startModel) View() string {
 }
 
 func interactiveHistoryStart(endDate time.Time) time.Time {
-	return endDate.AddDate(0, -6, 0)
+	return endDate.AddDate(0, -3, 0)
 }
 
 func runInteractiveStart(client *toggl.Client, args []string) {

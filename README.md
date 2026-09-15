@@ -15,6 +15,7 @@ CLI for *my* [toggl](https://engineering.toggl.com/docs/track/) usage
     - [x] start a task with real-time suggestions from prev. entries and projects
         - [x] if previous task is selected, its project is also re-applied
     - [x] list tasks of day (d) / work-week (w) / month (m) and iteractively select/filter (fzf?)
+- [x] cache slow-changing listings (projects, customers)
 
 **NOTE**: From the get-go I only target whatever I need from toggl, this won't
 be a *full-client* of any sort

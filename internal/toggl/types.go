@@ -21,6 +21,13 @@ type Project struct {
 	Active      bool   `json:"active"`
 }
 
+type WorkspaceClient struct {
+	ID          int64  `json:"id"`
+	WorkspaceID int64  `json:"workspace_id"`
+	Name        string `json:"name"`
+	Archived    bool   `json:"archived"`
+}
+
 type Workspace struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`

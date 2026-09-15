@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -14,12 +16,22 @@ const baseURL = "https://api.track.toggl.com/api/v9"
 type Client struct {
 	token      string
 	httpClient *http.Client
+	baseURL    string
+	cachePath  string
+	now        func() time.Time
 }
 
 func NewClient(token string) *Client {
+	cachePath := ""
+	if cacheDir, err := os.UserCacheDir(); err == nil {
+		cachePath = filepath.Join(cacheDir, "yati", "cache.json")
+	}
 	return &Client{
 		token:      token,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
+		baseURL:    baseURL,
+		cachePath:  cachePath,
+		now:        time.Now,
 	}
 }
 
@@ -33,7 +45,7 @@ func (c *Client) req(method, path string, body interface{}) (*http.Request, erro
 		bodyReader = bytes.NewReader(b)
 	}
 
-	req, err := http.NewRequest(method, baseURL+path, bodyReader)
+	req, err := http.NewRequest(method, c.baseURL+path, bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +149,11 @@ func (c *Client) StopTimeEntry(workspaceID int64, timeEntryID int64) (*TimeEntry
 }
 
 func (c *Client) GetProjects(workspaceID int64) ([]Project, error) {
+	projects, _, err := c.GetTargets(workspaceID)
+	return projects, err
+}
+
+func (c *Client) getProjects(workspaceID int64) ([]Project, error) {
 	req, err := c.req(http.MethodGet, fmt.Sprintf("/workspaces/%d/projects", workspaceID), nil)
 	if err != nil {
 		return nil, err
@@ -147,6 +164,64 @@ func (c *Client) GetProjects(workspaceID int64) ([]Project, error) {
 		return nil, err
 	}
 	return projects, nil
+}
+
+func (c *Client) getClients(workspaceID int64) ([]WorkspaceClient, error) {
+	req, err := c.req(http.MethodGet, fmt.Sprintf("/workspaces/%d/clients", workspaceID), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var clients []WorkspaceClient
+	if err := c.do(req, &clients); err != nil {
+		return nil, err
+	}
+	return clients, nil
+}
+
+func (c *Client) GetTargets(workspaceID int64) ([]Project, []WorkspaceClient, error) {
+	return c.getTargets(workspaceID, nil, false)
+}
+
+func (c *Client) GetTargetsWithTimeEntries(workspaceID int64, entries []TimeEntry) ([]Project, []WorkspaceClient, error) {
+	return c.getTargets(workspaceID, entries, true)
+}
+
+func (c *Client) getTargets(workspaceID int64, entries []TimeEntry, haveEntries bool) ([]Project, []WorkspaceClient, error) {
+	if cache, ok := c.readTargetCache(); ok {
+		return cache.Projects, cache.Clients, nil
+	}
+
+	projects, err := c.getProjects(workspaceID)
+	if err != nil {
+		return nil, nil, err
+	}
+	clients, err := c.getClients(workspaceID)
+	if err != nil {
+		return nil, nil, err
+	}
+	now := c.now()
+	if !haveEntries {
+		entries, err = c.GetTimeEntries(now.AddDate(0, -3, 0), now)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	projects = projectsByLastUsed(projects, entries)
+
+	if projects == nil {
+		projects = []Project{}
+	}
+	if clients == nil {
+		clients = []WorkspaceClient{}
+	}
+	cache := targetCache{
+		Date:     now.Format(time.DateOnly),
+		Projects: projects,
+		Clients:  clients,
+	}
+	_ = c.writeTargetCache(cache)
+	return projects, clients, nil
 }
 
 func (c *Client) GetTimeEntries(startDate, endDate time.Time) ([]TimeEntry, error) {

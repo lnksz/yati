@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -98,7 +100,7 @@ func runInteractiveStart(client *toggl.Client, args []string) {
 		os.Exit(1)
 	}
 
-	projects, err := client.GetProjects(workspaceID)
+	projects, _, err := client.GetTargetsWithTimeEntries(workspaceID, entries)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching projects: %v\n", err)
 		os.Exit(1)
@@ -109,27 +111,10 @@ func runInteractiveStart(client *toggl.Client, args []string) {
 		projMap[p.ID] = p.Name
 	}
 
-	var items []list.Item
-	seen := make(map[string]bool)
-
-	for i := len(entries) - 1; i >= 0; i-- {
-		e := entries[i]
-		key := e.Description
-		if e.ProjectID != nil {
-			key += fmt.Sprintf("-%d", *e.ProjectID)
-		}
-		if !seen[key] {
-			seen[key] = true
-			var pName string
-			if e.ProjectID != nil {
-				pName = projMap[*e.ProjectID]
-			}
-			items = append(items, taskItem{
-				desc:      e.Description,
-				projectID: e.ProjectID,
-				project:   pName,
-			})
-		}
+	tasks := taskSuggestionsByLastUsed(entries, projMap)
+	items := make([]list.Item, len(tasks))
+	for i, task := range tasks {
+		items[i] = task
 	}
 
 	if len(items) == 0 {
@@ -162,4 +147,61 @@ func runInteractiveStart(client *toggl.Client, args []string) {
 		}
 		fmt.Println("Started successfully.")
 	}
+}
+
+type taskSuggestion struct {
+	item     taskItem
+	lastUsed time.Time
+}
+
+func taskSuggestionsByLastUsed(entries []toggl.TimeEntry, projectNames map[int64]string) []taskItem {
+	type taskKey struct {
+		description string
+		projectID   int64
+		hasProject  bool
+	}
+
+	suggestions := make(map[taskKey]taskSuggestion)
+	for _, entry := range entries {
+		key := taskKey{description: entry.Description}
+		var projectName string
+		if entry.ProjectID != nil {
+			key.projectID = *entry.ProjectID
+			key.hasProject = true
+			projectName = projectNames[*entry.ProjectID]
+		}
+		if existing, ok := suggestions[key]; ok && !entry.Start.After(existing.lastUsed) {
+			continue
+		}
+		suggestions[key] = taskSuggestion{
+			item: taskItem{
+				desc:      entry.Description,
+				projectID: entry.ProjectID,
+				project:   projectName,
+			},
+			lastUsed: entry.Start,
+		}
+	}
+
+	ordered := make([]taskSuggestion, 0, len(suggestions))
+	for _, suggestion := range suggestions {
+		ordered = append(ordered, suggestion)
+	}
+	sort.Slice(ordered, func(i, j int) bool {
+		if !ordered[i].lastUsed.Equal(ordered[j].lastUsed) {
+			return ordered[i].lastUsed.After(ordered[j].lastUsed)
+		}
+		iDescription := strings.ToLower(ordered[i].item.desc)
+		jDescription := strings.ToLower(ordered[j].item.desc)
+		if iDescription != jDescription {
+			return iDescription < jDescription
+		}
+		return strings.ToLower(ordered[i].item.project) < strings.ToLower(ordered[j].item.project)
+	})
+
+	items := make([]taskItem, len(ordered))
+	for i, suggestion := range ordered {
+		items[i] = suggestion.item
+	}
+	return items
 }

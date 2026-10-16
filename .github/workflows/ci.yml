@@ -16,8 +16,12 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install fish
-        run: sudo apt-get update && sudo apt-get install -y fish
+      - name: Install build and test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config libgtk-4-dev libadwaita-1-dev fish \
+            xvfb xauth xdotool imagemagick dbus-daemon
 
       - name: Format
         run: test -z "$(gofmt -l .)"
@@ -29,4 +33,14 @@ jobs:
         run: go vet ./...
 
       - name: Test
-        run: go test ./...
+        run: go test -race ./...
+
+      - name: Test native GUI
+        run: sh scripts/test-gui.sh
+
+      - name: Build and test CLI without GUI dependencies
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          go build ./...
+          go test ./...

@@ -3,14 +3,13 @@ package cli
 import (
 	"fmt"
 	"os"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"yati/internal/toggl"
+	"yati/internal/tracker"
 )
 
 var docStyle = lipgloss.NewStyle().Margin(1, 2)
@@ -149,59 +148,11 @@ func runInteractiveStart(client *toggl.Client, args []string) {
 	}
 }
 
-type taskSuggestion struct {
-	item     taskItem
-	lastUsed time.Time
-}
-
 func taskSuggestionsByLastUsed(entries []toggl.TimeEntry, projectNames map[int64]string) []taskItem {
-	type taskKey struct {
-		description string
-		projectID   int64
-		hasProject  bool
-	}
-
-	suggestions := make(map[taskKey]taskSuggestion)
-	for _, entry := range entries {
-		key := taskKey{description: entry.Description}
-		var projectName string
-		if entry.ProjectID != nil {
-			key.projectID = *entry.ProjectID
-			key.hasProject = true
-			projectName = projectNames[*entry.ProjectID]
-		}
-		if existing, ok := suggestions[key]; ok && !entry.Start.After(existing.lastUsed) {
-			continue
-		}
-		suggestions[key] = taskSuggestion{
-			item: taskItem{
-				desc:      entry.Description,
-				projectID: entry.ProjectID,
-				project:   projectName,
-			},
-			lastUsed: entry.Start,
-		}
-	}
-
-	ordered := make([]taskSuggestion, 0, len(suggestions))
-	for _, suggestion := range suggestions {
-		ordered = append(ordered, suggestion)
-	}
-	sort.Slice(ordered, func(i, j int) bool {
-		if !ordered[i].lastUsed.Equal(ordered[j].lastUsed) {
-			return ordered[i].lastUsed.After(ordered[j].lastUsed)
-		}
-		iDescription := strings.ToLower(ordered[i].item.desc)
-		jDescription := strings.ToLower(ordered[j].item.desc)
-		if iDescription != jDescription {
-			return iDescription < jDescription
-		}
-		return strings.ToLower(ordered[i].item.project) < strings.ToLower(ordered[j].item.project)
-	})
-
-	items := make([]taskItem, len(ordered))
-	for i, suggestion := range ordered {
-		items[i] = suggestion.item
+	suggestions := tracker.Suggestions(entries, projectNames)
+	items := make([]taskItem, len(suggestions))
+	for i, suggestion := range suggestions {
+		items[i] = taskItem{desc: suggestion.Description, projectID: suggestion.ProjectID, project: suggestion.Project}
 	}
 	return items
 }

@@ -33,3 +33,6 @@ Thumbs.db
 .env
 .env.local
 *.local
+
+# Local build dependencies, caches, and GUI verification artifacts
+/tmp/

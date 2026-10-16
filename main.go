@@ -9,6 +9,7 @@ import (
 	"yati/internal/auth"
 	"yati/internal/cli"
 	"yati/internal/config"
+	"yati/internal/gui"
 )
 
 func main() {
@@ -28,6 +29,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	if args[0] == "completion" {
 		return runCompletion(args[1:], stdout, stderr)
+	}
+	if args[0] == "gui" {
+		return gui.Execute(args[1:], stdout, stderr)
 	}
 
 	cfg, err := config.Load()

@@ -49,4 +49,5 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "  interactive (i)  Start a task interactively")
 	fmt.Fprintln(w, "  list   (ls)  List tasks for the day (d), work-week (w), or month (m)")
 	fmt.Fprintln(w, "  completion   Output shell completion script")
+	fmt.Fprintln(w, "  gui          Open the desktop quick-entry window and tray icon")
 }

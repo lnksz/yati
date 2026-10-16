@@ -2,6 +2,7 @@ package toggl
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +20,22 @@ type Client struct {
 	baseURL    string
 	cachePath  string
 	now        func() time.Time
+	ctx        context.Context
+}
+
+// WithContext returns a client whose requests use ctx. The original client can
+// still be used by another caller; its configuration is not modified.
+func (c *Client) WithContext(ctx context.Context) *Client {
+	copy := *c
+	copy.ctx = ctx
+	return &copy
+}
+
+// WithCachePath returns a client with an isolated project/client cache.
+func (c *Client) WithCachePath(path string) *Client {
+	copy := *c
+	copy.cachePath = path
+	return &copy
 }
 
 func NewClient(token string) *Client {
@@ -45,7 +62,11 @@ func (c *Client) req(method, path string, body interface{}) (*http.Request, erro
 		bodyReader = bytes.NewReader(b)
 	}
 
-	req, err := http.NewRequest(method, c.baseURL+path, bodyReader)
+	ctx := c.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +88,7 @@ func (c *Client) do(req *http.Request, v interface{}) error {
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("toggl API error: status %d, body: %s", resp.StatusCode, string(body))
+		return responseError(resp, body)
 	}
 
 	if v != nil {

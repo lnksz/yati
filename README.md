@@ -2,6 +2,10 @@
 
 CLI for *my* [toggl](https://engineering.toggl.com/docs/track/) usage
 
+A native Linux desktop window and tray icon are also available with `yati gui`.
+Bind `yati gui --toggle` to a global desktop shortcut for quick entry from
+anywhere. See [desktop setup, controls, and build instructions](docs/gui.md).
+
 - [x] short and sweet for simple tasks
     - [x] sane auth support
         - [x] env var

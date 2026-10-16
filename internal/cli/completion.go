@@ -42,6 +42,16 @@ complete -c yati -n __yati_needs_subcommand -a i -d 'Start a task interactively'
 complete -c yati -n __yati_needs_subcommand -a list -d 'List tasks for a period'
 complete -c yati -n __yati_needs_subcommand -a ls -d 'List tasks for a period'
 complete -c yati -n __yati_needs_subcommand -a completion -d 'Output shell completion script'
+complete -c yati -n __yati_needs_subcommand -a gui -d 'Open the desktop quick-entry window'
+
+# Desktop options
+complete -c yati -n '__yati_subcommand_is gui' -s d -l detach -d 'Detach from the terminal'
+complete -c yati -n '__yati_subcommand_is gui' -l background -d 'Start in the tray'
+complete -c yati -n '__yati_subcommand_is gui' -l toggle -d 'Toggle the quick-entry window'
+complete -c yati -n '__yati_subcommand_is gui' -l quit -d 'Quit the resident desktop app'
+complete -c yati -n '__yati_subcommand_is gui' -l install -d 'Install the application launcher and icon'
+complete -c yati -n '__yati_subcommand_is gui' -l autostart -d 'Enable login startup'
+complete -c yati -n '__yati_subcommand_is gui' -l no-tray -d 'Disable the tray icon'
 
 # start flags
 complete -c yati -n '__yati_subcommand_is start s' -s p -d 'Toggl project, or pick interactively'

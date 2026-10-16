@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T10:12:56Z",
+  "title": "Design System: Yati",
+  "extensions": {
+    "motion": [
+      {
+        "name": "page-crossfade",
+        "value": "120ms",
+        "purpose": "Native GTK stack crossfade between Quick entry, History, and Connection."
+      }
+    ]
+  },
+  "components": [],
+  "narrative": {
+    "northStar": "Native GNOME task switching",
+    "overview": "Yati is a compact desktop utility built from GTK4 and libadwaita controls. Its visual identity follows the user's system theme, accent, font, and icon theme. The running timer, entry controls, and recent work carry the interface.\n\nThe window keeps a straightforward vertical hierarchy and uses native selected, suggested, destructive, disabled, and focus states. Quick entry and history share the same search field and row vocabulary.",
+    "keyCharacteristics": [
+      "Native system appearance.",
+      "Compact, keyboard-first interaction.",
+      "Clear timer and action hierarchy.",
+      "Reusable boxed lists and two-line task rows."
+    ],
+    "rules": [
+      {
+        "name": "The System Theme Rule",
+        "body": "Preserve native semantic color roles; do not turn colors sampled from a screenshot into fixed application tokens.",
+        "section": "colors"
+      },
+      {
+        "name": "The Native Type Rule",
+        "body": "Express hierarchy with native typography roles and widget semantics rather than hard-coded font sizes or display faces.",
+        "section": "typography"
+      },
+      {
+        "name": "The Native Surface Rule",
+        "body": "Reuse native surface treatments and overlays; do not copy theme shadows into an application shadow scale.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do inherit system theme, accent, typography, symbolic icons, and widget states.",
+      "Do reuse boxed lists, action rows, and semantic action styles.",
+      "Do keep keyboard focus visible and native controls operable with the keyboard.",
+      "Do preserve readable task descriptions and project context at narrow widths."
+    ],
+    "donts": [
+      "Don't replace native controls with a custom web interface.",
+      "Don't freeze screenshot colors, font metrics, radii, or shadows into application tokens.",
+      "Don't use the application icon's colors as an inferred interface palette."
+    ]
+  }
+}

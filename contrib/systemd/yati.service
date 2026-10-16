@@ -1,0 +1,15 @@
+[Unit]
+Description=Yati Toggl desktop and tray
+PartOf=graphical-session.target
+After=graphical-session-pre.target
+
+[Service]
+Type=dbus
+BusName=io.github.kristof.yati
+ExecStart=%h/.local/bin/yati gui --background
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=30
+
+[Install]
+WantedBy=graphical-session.target

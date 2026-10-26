@@ -339,8 +339,10 @@ static void startup(GApplication *application, gpointer data) {
     GtkWidget *track = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
     GtkWidget *composer = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     project_names = gtk_string_list_new(NULL);
-    project_dropdown = gtk_drop_down_new(G_LIST_MODEL(project_names), NULL);
+    GtkExpression *project_name = gtk_property_expression_new(GTK_TYPE_STRING_OBJECT, NULL, "string");
+    project_dropdown = gtk_drop_down_new(G_LIST_MODEL(project_names), project_name);
     gtk_drop_down_set_enable_search(GTK_DROP_DOWN(project_dropdown), TRUE);
+    gtk_drop_down_set_search_match_mode(GTK_DROP_DOWN(project_dropdown), GTK_STRING_FILTER_MATCH_MODE_SUBSTRING);
     gtk_widget_set_hexpand(project_dropdown, TRUE);
     gtk_accessible_update_property(GTK_ACCESSIBLE(project_dropdown), GTK_ACCESSIBLE_PROPERTY_LABEL, "Project for new entry", -1);
     gtk_box_append(GTK_BOX(composer), project_dropdown);

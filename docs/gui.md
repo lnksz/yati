@@ -150,7 +150,11 @@ including while the shortcuts window is open.
 | Escape | Hide the window, or leave Connection |
 | Ctrl+Q | Quit the desktop application |
 
-The project picker is searchable. History includes today, the current Monday–Sunday
+Open the project picker and type to filter project names as you go. Matches are
+case-insensitive and can occur anywhere in the name. Use Down/Up and Enter, or
+click a match, to select it.
+
+History includes today, the current Monday–Sunday
 week, and the current calendar month, using local calendar boundaries. Its total
 reflects the current search, matching the TUI's filtering behavior. Recent-task
 results show the first 100 matches; type more to narrow a longer history.

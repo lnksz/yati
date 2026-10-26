@@ -327,7 +327,7 @@ func TestDesktopInteraction(t *testing.T) {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			t.Fatal(err)
 		}
-		if output, err := exec.CommandContext(ctx, "import", "-window", window, filepath.Join(path, name+".png")).CombinedOutput(); err != nil {
+		if output, err := exec.CommandContext(ctx, "import", "-screen", "-window", window, filepath.Join(path, name+".png")).CombinedOutput(); err != nil {
 			t.Fatalf("screenshot: %v %s", err, output)
 		}
 	}
@@ -476,6 +476,54 @@ func TestDesktopInteraction(t *testing.T) {
 	await("continue last shortcut works while help is open", func() bool {
 		v := view()
 		return !v.Busy && v.ShortcutsVisible && v.Current != nil && v.Current.Description == "Brand new task" && v.Current.ProjectID == nil
+	})
+	x("key", "--clearmodifiers", "Escape")
+	await("close help before choosing project", func() bool { return !view().ShortcutsVisible })
+	x("windowfocus", "--sync", window)
+	x("key", "--clearmodifiers", "ctrl+1", "ctrl+l")
+	x("type", "--clearmodifiers", "--delay", "0", "Project picker test")
+	filterProjects := func(query string) {
+		t.Helper()
+		x("mousemove", "--window", window, "240", "267")
+		x("click", "1")
+		x("type", "--clearmodifiers", "--delay", "20", query)
+		// GTK debounces the popup search before updating its filtered model.
+		x("sleep", "0.3")
+	}
+	filterProjects("api")
+	screenshot("project-filter")
+	x("key", "--clearmodifiers", "Down", "Return")
+	x("key", "--clearmodifiers", "ctrl+l", "ctrl+Return")
+	await("project filter selects a case-insensitive substring match", func() bool {
+		v := view()
+		return !v.Busy && v.Current != nil && v.Current.Description == "Project picker test" &&
+			v.Current.ProjectID != nil && *v.Current.ProjectID == 2
+	})
+	filterProjects("firm")
+	x("mousemove", "--window", window, "240", "216")
+	x("click", "1") // Dismiss the popup without choosing the matching project.
+	x("key", "--clearmodifiers", "ctrl+l")
+	x("type", "--clearmodifiers", "--delay", "0", "Keep selected project")
+	x("key", "--clearmodifiers", "ctrl+Return")
+	await("cancelling project search preserves the selection", func() bool {
+		v := view()
+		return !v.Busy && v.Current != nil && v.Current.Description == "Keep selected project" &&
+			v.Current.ProjectID != nil && *v.Current.ProjectID == 2
+	})
+	filterProjects("no such project")
+	screenshot("project-no-match")
+	x("key", "--clearmodifiers", "ctrl+a", "BackSpace")
+	x("sleep", "0.3")
+	screenshot("project-filter-cleared")
+	x("type", "--clearmodifiers", "--delay", "20", "no project")
+	x("sleep", "0.3")
+	x("key", "--clearmodifiers", "Down", "Return")
+	x("key", "--clearmodifiers", "ctrl+l")
+	x("type", "--clearmodifiers", "--delay", "0", "Without project")
+	x("key", "--clearmodifiers", "ctrl+Return")
+	await("clearing a no-match search restores project choices", func() bool {
+		v := view()
+		return !v.Busy && v.Current != nil && v.Current.Description == "Without project" && v.Current.ProjectID == nil
 	})
 	if err := launch("quit").Run(); err != nil {
 		t.Fatalf("remote quit: %v", err)

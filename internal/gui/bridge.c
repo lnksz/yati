@@ -359,6 +359,8 @@ static void startup(GApplication *application, gpointer data) {
     g_signal_connect(recent_list, "row-activated", G_CALLBACK(row_activated), NULL);
     GtkWidget *recent_scroll = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(recent_scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    // Reserve the scrollbar's full width so it cannot overlap row contents.
+    gtk_scrolled_window_set_overlay_scrolling(GTK_SCROLLED_WINDOW(recent_scroll), FALSE);
     gtk_widget_set_vexpand(recent_scroll, TRUE);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(recent_scroll), recent_list);
     gtk_box_append(GTK_BOX(track), recent_scroll);

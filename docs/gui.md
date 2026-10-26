@@ -14,6 +14,11 @@ go build -o yati .
 ./yati gui
 ```
 
+`make release` builds a stripped executable with build paths removed.
+`make install` builds that release and installs it with executable permissions
+to the sibling `bin/` directory of `$XDG_DATA_HOME`. With the default data home
+`~/.local/share`, the destination is `~/.local/bin/yati`.
+
 Use `./yati gui -d` (or `--detach`) to open Yati and return control to the
 terminal. It starts a separate process/session and waits for desktop startup
 before reporting success. Startup failures are reported to the terminal;

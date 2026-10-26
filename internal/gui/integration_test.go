@@ -337,7 +337,12 @@ func TestDesktopInteraction(t *testing.T) {
 		v := view()
 		return v.Width == initialWidth-200 && v.Height == initialHeight-40 && !v.Transitioning
 	})
+	// Exercise the scrollbar's hover state while the recent list overflows.
+	x("mousemove", "--window", window, "399", "470")
+	x("mousedown", "1")
 	screenshot("narrow")
+	x("mouseup", "1")
+	x("mousemove", "1000", "900") // Leave the app so a header tooltip cannot mask later window searches.
 	x("windowsize", window, "640", "690")
 	await("normal layout allocated", func() bool {
 		v := view()

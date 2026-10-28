@@ -22,6 +22,7 @@ type Backend interface {
 	Current(context.Context) (*toggl.TimeEntry, error)
 	Start(context.Context, int64, *int64, string) (*toggl.TimeEntry, error)
 	Stop(context.Context, int64, int64) (*toggl.TimeEntry, error)
+	Update(context.Context, int64, int64, *int64, string) (*toggl.TimeEntry, error)
 }
 
 // Remote adapts the existing Toggl client for the desktop service.
@@ -45,6 +46,9 @@ func (r Remote) Start(ctx context.Context, workspace int64, project *int64, desc
 }
 func (r Remote) Stop(ctx context.Context, workspace, entry int64) (*toggl.TimeEntry, error) {
 	return r.Client.WithContext(ctx).StopTimeEntry(workspace, entry)
+}
+func (r Remote) Update(ctx context.Context, workspace, entry int64, project *int64, description string) (*toggl.TimeEntry, error) {
+	return r.Client.WithContext(ctx).UpdateTimeEntry(workspace, entry, project, description)
 }
 
 // Snapshot contains the last known server state and no credentials.
@@ -217,6 +221,60 @@ func (s *Service) Stop(ctx context.Context) error {
 	state.Entries, state.Current = replaceEntry(state.Entries, *stopped), nil
 	s.store(state)
 	return nil
+}
+
+// Update updates the title and project of the entry selected when the editor opened. It never
+// stops or replaces a timer, and refuses to edit a different running entry.
+func (s *Service) Update(ctx context.Context, entryID int64, project *int64, description string) error {
+	s.op.Lock()
+	defer s.op.Unlock()
+	if err := s.available(); err != nil {
+		return err
+	}
+	state := s.State()
+	if state.Current == nil || state.Current.ID != entryID {
+		return errors.New("the running timer changed; reopen Edit running task and try again")
+	}
+	workspace := state.Current.WorkspaceID
+	if workspace != state.Profile.DefaultWorkspace {
+		return errors.New("this timer belongs to another workspace; edit it in Toggl")
+	}
+	current, err := s.checkCurrent(ctx, &state)
+	if err != nil {
+		return err
+	}
+	entry := current
+	projectChanged := !sameProject(current.ProjectID, project)
+	if projectChanged || current.Description != description {
+		if projectChanged && project != nil {
+			found := false
+			for _, p := range state.Projects {
+				if p.ID == *project && p.Active && (p.WorkspaceID == 0 || p.WorkspaceID == workspace) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return errors.New("this project is unavailable or archived; choose an active project")
+			}
+		}
+		entry, err = s.backend.Update(ctx, workspace, current.ID, project, description)
+		if err != nil {
+			return s.remoteError(err)
+		}
+		if entry == nil || entry.ID != current.ID || entry.WorkspaceID != workspace ||
+			entry.Duration >= 0 || entry.Stop != nil || !entry.Start.Equal(current.Start) ||
+			!sameProject(entry.ProjectID, project) || entry.Description != description {
+			return errors.New("the task update was not confirmed by Toggl; refresh before trying again")
+		}
+	}
+	state.Current, state.Entries = entry, replaceEntry(state.Entries, *entry)
+	s.store(state)
+	return nil
+}
+
+func sameProject(a, b *int64) bool {
+	return a == nil && b == nil || a != nil && b != nil && *a == *b
 }
 
 func (s *Service) checkCurrent(ctx context.Context, state *Snapshot) (*toggl.TimeEntry, error) {

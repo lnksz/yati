@@ -10,14 +10,17 @@ extern void yati_go_event(int action, int index, char *text);
 static AdwApplication *app;
 static GtkWindow *window;
 static GtkWindow *shortcuts_window;
+static GtkWindow *editor_window;
 static GtkWidget *app_menu;
 static AdwToastOverlay *toasts;
 static GtkWidget *search, *start_button, *stop_button, *continue_button;
 static GtkWidget *current_row, *elapsed_label, *status_label, *spinner;
+static GtkWidget *edit_button, *edit_project_dropdown, *edit_title;
 static GtkWidget *error_revealer, *error_label, *main_stack, *project_dropdown;
 static GtkWidget *recent_list, *history_list, *summary_label;
 static GtkWidget *token_entry, *remember_check, *connect_button, *autostart_check;
 static GtkStringList *project_names;
+static GtkStringList *edit_project_names;
 static gboolean rendering = FALSE, connected = FALSE, working = FALSE;
 static guint clock_source = 0;
 
@@ -63,6 +66,7 @@ static gboolean tick(gpointer data) {
 void yati_hide(void) {
     if (clock_source) { g_source_remove(clock_source); clock_source = 0; }
     if (shortcuts_window) gtk_widget_set_visible(GTK_WIDGET(shortcuts_window), FALSE);
+    if (editor_window) gtk_widget_set_visible(GTK_WIDGET(editor_window), FALSE);
     gtk_widget_set_visible(GTK_WIDGET(window), FALSE);
 }
 
@@ -71,6 +75,78 @@ static gboolean close_window(GtkWindow *w, gpointer data) {
     yati_hide();
     return TRUE;
 }
+
+static void editor_action(GtkButton *button, gpointer data) {
+    (void)button;
+    gtk_widget_set_visible(GTK_WIDGET(editor_window), FALSE);
+    if (data) event(YATI_UPDATE, (int)gtk_drop_down_get_selected(GTK_DROP_DOWN(edit_project_dropdown)), gtk_editable_get_text(GTK_EDITABLE(edit_title)));
+}
+
+static gboolean editor_key(GtkEventControllerKey *controller, guint key, guint code, GdkModifierType modifiers, gpointer data) {
+    (void)controller; (void)code; (void)modifiers; (void)data;
+    if (key != GDK_KEY_Escape) return FALSE;
+    gtk_widget_set_visible(GTK_WIDGET(editor_window), FALSE);
+    return TRUE;
+}
+
+void yati_editor_begin(void) {
+    if (!editor_window) {
+        editor_window = GTK_WINDOW(adw_window_new());
+        gtk_window_set_title(editor_window, "Edit running task");
+        gtk_window_set_transient_for(editor_window, window);
+        gtk_window_set_application(editor_window, GTK_APPLICATION(app));
+        gtk_window_set_modal(editor_window, TRUE);
+        gtk_window_set_hide_on_close(editor_window, TRUE);
+        gtk_window_set_default_size(editor_window, 360, -1);
+        gtk_window_set_resizable(editor_window, FALSE);
+        GtkWidget *content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+        adw_window_set_content(ADW_WINDOW(editor_window), content);
+        GtkWidget *header = adw_header_bar_new();
+        adw_header_bar_set_show_start_title_buttons(ADW_HEADER_BAR(header), FALSE);
+        adw_header_bar_set_show_end_title_buttons(ADW_HEADER_BAR(header), FALSE);
+        adw_header_bar_set_title_widget(ADW_HEADER_BAR(header), adw_window_title_new("Edit running task", NULL));
+        GtkWidget *cancel = gtk_button_new_with_label("Cancel");
+        g_signal_connect(cancel, "clicked", G_CALLBACK(editor_action), NULL);
+        adw_header_bar_pack_start(ADW_HEADER_BAR(header), cancel);
+        GtkWidget *save = gtk_button_new_with_label("Save");
+        gtk_widget_add_css_class(save, "suggested-action");
+        g_signal_connect(save, "clicked", G_CALLBACK(editor_action), GINT_TO_POINTER(1));
+        adw_header_bar_pack_end(ADW_HEADER_BAR(header), save);
+        gtk_window_set_default_widget(editor_window, save);
+        gtk_box_append(GTK_BOX(content), header);
+        GtkWidget *fields = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
+        gtk_widget_set_margin_start(fields, 24); gtk_widget_set_margin_end(fields, 24);
+        gtk_widget_set_margin_top(fields, 12); gtk_widget_set_margin_bottom(fields, 24);
+        gtk_box_append(GTK_BOX(fields), label("Title", NULL));
+        edit_title = gtk_entry_new();
+        gtk_entry_set_activates_default(GTK_ENTRY(edit_title), TRUE);
+        gtk_accessible_update_property(GTK_ACCESSIBLE(edit_title), GTK_ACCESSIBLE_PROPERTY_LABEL, "Title for running task", -1);
+        gtk_box_append(GTK_BOX(fields), edit_title);
+        gtk_box_append(GTK_BOX(fields), label("Project", NULL));
+        edit_project_names = gtk_string_list_new(NULL);
+        GtkExpression *name = gtk_property_expression_new(GTK_TYPE_STRING_OBJECT, NULL, "string");
+        edit_project_dropdown = gtk_drop_down_new(G_LIST_MODEL(edit_project_names), name);
+        gtk_drop_down_set_enable_search(GTK_DROP_DOWN(edit_project_dropdown), TRUE);
+        gtk_drop_down_set_search_match_mode(GTK_DROP_DOWN(edit_project_dropdown), GTK_STRING_FILTER_MATCH_MODE_SUBSTRING);
+        gtk_accessible_update_property(GTK_ACCESSIBLE(edit_project_dropdown), GTK_ACCESSIBLE_PROPERTY_LABEL, "Project for running task", -1);
+        gtk_box_append(GTK_BOX(fields), edit_project_dropdown);
+        gtk_box_append(GTK_BOX(content), fields);
+        GtkEventController *keys = gtk_event_controller_key_new();
+        g_signal_connect(keys, "key-pressed", G_CALLBACK(editor_key), NULL);
+        gtk_widget_add_controller(GTK_WIDGET(editor_window), keys);
+    }
+    gtk_string_list_splice(edit_project_names, 0, g_list_model_get_n_items(G_LIST_MODEL(edit_project_names)), NULL);
+}
+
+void yati_editor_project_add(const char *name) { gtk_string_list_append(edit_project_names, name); }
+void yati_editor_show(int selected, const char *title) {
+    gtk_drop_down_set_selected(GTK_DROP_DOWN(edit_project_dropdown), selected);
+    gtk_editable_set_text(GTK_EDITABLE(edit_title), title);
+    gtk_window_present(editor_window);
+    gtk_widget_grab_focus(edit_title);
+    gtk_editable_select_region(GTK_EDITABLE(edit_title), 0, -1);
+}
+int yati_editor_visible(void) { return editor_window && gtk_widget_get_visible(GTK_WIDGET(editor_window)); }
 
 static void search_changed(GtkEditable *editable, gpointer data) {
     (void)data;
@@ -307,6 +383,11 @@ static void startup(GApplication *application, gpointer data) {
     gtk_widget_add_css_class(elapsed_label, "numeric");
     gtk_widget_add_css_class(elapsed_label, "title-2");
     adw_action_row_add_suffix(ADW_ACTION_ROW(current_row), elapsed_label);
+    edit_button = button(NULL, "document-edit-symbolic", YATI_EDIT);
+    gtk_widget_set_valign(edit_button, GTK_ALIGN_CENTER);
+    gtk_widget_set_tooltip_text(edit_button, "Edit running task");
+    gtk_accessible_update_property(GTK_ACCESSIBLE(edit_button), GTK_ACCESSIBLE_PROPERTY_LABEL, "Edit running task", -1);
+    adw_action_row_add_suffix(ADW_ACTION_ROW(current_row), edit_button);
     stop_button = button("Stop", "media-playback-stop-symbolic", YATI_STOP);
     gtk_widget_set_valign(stop_button, GTK_ALIGN_CENTER);
     gtk_widget_add_css_class(stop_button, "destructive-action");
@@ -494,6 +575,8 @@ void yati_set_current(const char *title, const char *subtitle, const char *elaps
     adw_action_row_set_subtitle(ADW_ACTION_ROW(current_row), subtitle);
     gtk_label_set_text(GTK_LABEL(elapsed_label), elapsed);
     gtk_widget_set_visible(elapsed_label, running);
+    gtk_widget_set_visible(edit_button, running);
+    gtk_widget_set_sensitive(edit_button, !busy);
     gtk_widget_set_visible(stop_button, running);
     gtk_widget_set_sensitive(stop_button, !busy);
     gtk_widget_set_visible(continue_button, !running);

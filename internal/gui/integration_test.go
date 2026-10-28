@@ -88,6 +88,19 @@ func (f *desktopFixture) Stop(_ context.Context, workspace, id int64) (*toggl.Ti
 	f.current = nil
 	return &stopped, nil
 }
+func (f *desktopFixture) Update(_ context.Context, workspace, id int64, project *int64, description string) (*toggl.TimeEntry, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.current == nil || f.current.ID != id || f.current.WorkspaceID != workspace {
+		return nil, fmt.Errorf("fixture timer changed")
+	}
+	f.calls = append(f.calls, "update")
+	entry := *f.current
+	entry.ProjectID, entry.Description = project, description
+	f.current = &entry
+	f.entries = replaceFixtureEntry(f.entries, entry)
+	return &entry, nil
+}
 func replaceFixtureEntry(entries []toggl.TimeEntry, entry toggl.TimeEntry) []toggl.TimeEntry {
 	for i := range entries {
 		if entries[i].ID == entry.ID {
@@ -110,6 +123,7 @@ type fixtureView struct {
 	Transitioning    bool
 	HistoryDetails   map[int64]string
 	ShortcutsVisible bool
+	EditorVisible    bool
 }
 
 func (f *desktopFixture) View() (string, *dbus.Error) {
@@ -125,7 +139,8 @@ func (f *desktopFixture) View() (string, *dbus.Error) {
 		}
 		data, err := json.Marshal(fixtureView{Busy: f.app.busy, Page: f.app.page, Query: f.app.query,
 			Current: f.app.state().Current, Calls: calls, Error: f.app.errorText,
-			Width: width, Height: height, Transitioning: transitioning, HistoryDetails: details, ShortcutsVisible: nativeShortcutsVisible()})
+			Width: width, Height: height, Transitioning: transitioning, HistoryDetails: details, ShortcutsVisible: nativeShortcutsVisible(),
+			EditorVisible: nativeEditorVisible()})
 		if err != nil {
 			result <- "{}"
 		} else {
@@ -525,6 +540,94 @@ func TestDesktopInteraction(t *testing.T) {
 		v := view()
 		return !v.Busy && v.Current != nil && v.Current.Description == "Without project" && v.Current.ProjectID == nil
 	})
+	// Editing the current title/project must retain the timer and the draft.
+	x("key", "--clearmodifiers", "ctrl+l")
+	x("type", "--clearmodifiers", "--delay", "0", "Preserve this draft")
+	await("draft before project edit", func() bool { return view().Query == "Preserve this draft" })
+	before := view()
+	openEditor := func() string {
+		t.Helper()
+		x("mousemove", "--window", window, "500", "107")
+		x("click", "1")
+		await("task editor opens", func() bool { return view().EditorVisible })
+		var editor string
+		await("task editor allocated", func() bool {
+			out, err := exec.CommandContext(ctx, "xdotool", "search", "--onlyvisible", "--name", "^Edit running task$").Output()
+			editor = strings.TrimSpace(string(out))
+			return err == nil && editor != ""
+		})
+		x("windowfocus", "--sync", editor)
+		return editor
+	}
+	chooseCurrentProject := func(query string) {
+		t.Helper()
+		x("key", "--clearmodifiers", "Tab", "space")
+		x("type", "--clearmodifiers", "--delay", "20", query)
+		x("sleep", "0.3")
+		x("key", "--clearmodifiers", "Down", "Return")
+	}
+	saveEdit := func() {
+		t.Helper()
+		x("key", "--clearmodifiers", "shift+Tab", "Return")
+		await("task editor closes after save", func() bool { v := view(); return !v.Busy && !v.EditorVisible })
+		x("windowfocus", "--sync", window)
+	}
+	assertEditedEntry := func(project *int64, title string, updates int) {
+		t.Helper()
+		v := view()
+		want := *before.Current
+		want.ProjectID, want.Description = project, title
+		if v.Current == nil || v.Current.ID != want.ID || !v.Current.Start.Equal(want.Start) ||
+			v.Current.Duration != want.Duration || v.Current.Description != want.Description || !sameFixtureProject(v.Current.ProjectID, project) ||
+			v.Query != before.Query || v.Error != "" || len(v.Calls) != len(before.Calls)+updates {
+			t.Fatalf("edit replaced the timer or lost state: %+v", v)
+		}
+		for _, call := range v.Calls[len(before.Calls):] {
+			if call != "update" {
+				t.Fatalf("edit stopped or started a timer: %v", v.Calls)
+			}
+		}
+	}
+	openEditor()
+	chooseCurrentProject("api")
+	saveEdit()
+	project := int64(2)
+	assertEditedEntry(&project, before.Current.Description, 1)
+	openEditor()
+	x("type", "--clearmodifiers", "--delay", "0", "Discard this title")
+	chooseCurrentProject("firm")
+	x("key", "--clearmodifiers", "Escape")
+	await("Escape cancels title and project edits", func() bool { return !view().EditorVisible })
+	x("windowfocus", "--sync", window)
+	assertEditedEntry(&project, before.Current.Description, 1)
+	openEditor()
+	saveEdit() // Existing title and project are prefilled and need no update.
+	assertEditedEntry(&project, before.Current.Description, 1)
+	openEditor()
+	chooseCurrentProject("no project")
+	saveEdit()
+	assertEditedEntry(nil, before.Current.Description, 2)
+	openEditor()
+	x("type", "--clearmodifiers", "--delay", "0", "Renamed <task> & title")
+	x("key", "--clearmodifiers", "Return")
+	await("Enter saves a title-only edit", func() bool { v := view(); return !v.Busy && !v.EditorVisible })
+	x("windowfocus", "--sync", window)
+	assertEditedEntry(nil, "Renamed <task> & title", 3)
+	editor := openEditor()
+	x("type", "--clearmodifiers", "--delay", "0", "Updated title and project")
+	chooseCurrentProject("api")
+	if path := os.Getenv("YATI_GUI_EVIDENCE"); path != "" {
+		if out, err := exec.CommandContext(ctx, "import", "-window", editor, filepath.Join(path, "edit-running-task.png")).CombinedOutput(); err != nil {
+			t.Fatalf("task editor screenshot: %v %s", err, out)
+		}
+	}
+	saveEdit()
+	assertEditedEntry(&project, "Updated title and project", 4)
+	screenshot("task-updated")
+	openEditor()
+	x("key", "--clearmodifiers", "BackSpace")
+	saveEdit()
+	assertEditedEntry(&project, "", 5)
 	if err := launch("quit").Run(); err != nil {
 		t.Fatalf("remote quit: %v", err)
 	}
@@ -532,6 +635,10 @@ func TestDesktopInteraction(t *testing.T) {
 		var owned bool
 		return conn.BusObject().Call("org.freedesktop.DBus.NameHasOwner", 0, applicationID).Store(&owned) == nil && !owned
 	})
+}
+
+func sameFixtureProject(a, b *int64) bool {
+	return a == nil && b == nil || a != nil && b != nil && *a == *b
 }
 
 func integrationEnabled() bool { return os.Getenv("YATI_GUI_INTEGRATION") == "1" }

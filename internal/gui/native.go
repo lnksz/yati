@@ -44,6 +44,8 @@ type desktopApp struct {
 	ready, busy                              bool
 	query, page, period, errorText, activity string
 	projects                                 []*int64
+	editProjects                             []*int64
+	editEntry                                int64
 	projectNames                             map[int64]string
 	recent                                   []tracker.Suggestion
 	history                                  []toggl.TimeEntry
@@ -197,6 +199,18 @@ func (a *desktopApp) event(action, index int, text string) {
 		if a.service != nil {
 			a.work("Stopping timer…", a.service.Stop, func() { a.toast("Timer stopped") })
 		}
+	case C.YATI_EDIT:
+		if !a.busy && a.service != nil {
+			a.editCurrent()
+		}
+	case C.YATI_UPDATE:
+		if a.busy || a.service == nil || index < 0 || index >= len(a.editProjects) {
+			return
+		}
+		service, entry, project := a.service, a.editEntry, a.editProjects[index]
+		a.work("Updating task…", func(ctx context.Context) error {
+			return service.Update(ctx, entry, project, text)
+		}, func() { a.toast("Task updated") })
 	case C.YATI_CONTINUE:
 		if a.service == nil || a.busy {
 			return
@@ -425,6 +439,35 @@ func (a *desktopApp) renderProjects() {
 	C.yati_projects_end(C.int(selected))
 }
 
+func (a *desktopApp) editCurrent() {
+	state := a.state()
+	entry := state.Current
+	if entry == nil {
+		return
+	}
+	a.editEntry, a.editProjects = entry.ID, []*int64{nil}
+	C.yati_editor_begin()
+	ctext("No project", func(text *C.char) { C.yati_editor_project_add(text) })
+	selected := 0
+	for _, project := range state.Projects {
+		if !project.Active || (project.WorkspaceID != 0 && project.WorkspaceID != entry.WorkspaceID) {
+			continue
+		}
+		id := project.ID
+		a.editProjects = append(a.editProjects, &id)
+		ctext(project.Name, func(text *C.char) { C.yati_editor_project_add(text) })
+		if entry.ProjectID != nil && *entry.ProjectID == id {
+			selected = len(a.editProjects) - 1
+		}
+	}
+	if entry.ProjectID != nil && selected == 0 {
+		a.editProjects = append(a.editProjects, entry.ProjectID)
+		ctext(a.projectName(entry.ProjectID), func(text *C.char) { C.yati_editor_project_add(text) })
+		selected = len(a.editProjects) - 1
+	}
+	ctext(entry.Description, func(text *C.char) { C.yati_editor_show(C.int(selected), text) })
+}
+
 func (a *desktopApp) renderLists() {
 	if !a.ready {
 		return
@@ -517,6 +560,8 @@ func nativeFrame() (int, int, bool) {
 func nativeHistoryDetail(index int) string { return C.GoString(C.yati_list_detail(1, C.int(index))) }
 
 func nativeShortcutsVisible() bool { return C.yati_help_visible() != 0 }
+
+func nativeEditorVisible() bool { return C.yati_editor_visible() != 0 }
 
 func (a *desktopApp) updateIconState(running bool) {
 	if a.iconState != nil && *a.iconState == running {

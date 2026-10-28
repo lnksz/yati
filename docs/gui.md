@@ -154,6 +154,13 @@ Open the project picker and type to filter project names as you go. Matches are
 case-insensitive and can occur anywhere in the name. Use Down/Up and Enter, or
 click a match, to select it.
 
+To edit the running task, click the edit icon beside **Stop**. The **Edit running
+task** window starts with its current title and project. Edit the title, choose an
+active project (or **No project**), then click **Save**. Pressing Enter in the title
+field also saves. Both changes update the existing entry while keeping its start
+time and elapsed timer. **Cancel** or Escape discards the edits. The project picker
+beside **Start new** still applies to new entries.
+
 History includes today, the current Monday–Sunday
 week, and the current calendar month, using local calendar boundaries. Its total
 reflects the current search, matching the TUI's filtering behavior. Recent-task

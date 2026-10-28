@@ -26,6 +26,7 @@ The resident, single-instance desktop window is reached from a global shortcut, 
 
 - Search recent task descriptions and project names locally, continue an entry with its original project, or start a new description with a selected project.
 - Show the current timer and elapsed time, and provide an explicit Stop action or Continue last action.
+- Edit the running task's title and project in place while preserving its timer.
 - Filter history by today, the current week, or the current month and show the filtered total.
 - Reuse existing credential sources, show cached history before refresh completes, and preserve unfinished input when reopening the window.
 - Require a compatible desktop host for the optional tray. Desktop focus and placement remain controlled by the compositor.

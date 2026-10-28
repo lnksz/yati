@@ -5,7 +5,8 @@ enum {
     YATI_STARTUP = 1, YATI_ACTIVATE, YATI_SEARCH, YATI_START_NEW,
     YATI_RESUME, YATI_STOP, YATI_CONTINUE, YATI_REFRESH, YATI_QUIT,
     YATI_RESULT, YATI_TICK, YATI_PERIOD, YATI_PAGE, YATI_CONNECT,
-    YATI_CONNECTION, YATI_AUTOSTART, YATI_SHORTCUT, YATI_HIDE, YATI_HELP
+    YATI_CONNECTION, YATI_AUTOSTART, YATI_SHORTCUT, YATI_HIDE, YATI_HELP,
+    YATI_EDIT, YATI_UPDATE
 };
 
 int yati_run(int argc, char **argv);
@@ -26,6 +27,10 @@ int yati_project(void);
 void yati_projects_begin(void);
 void yati_project_add(const char *name);
 void yati_projects_end(int selected);
+void yati_editor_begin(void);
+void yati_editor_project_add(const char *name);
+void yati_editor_show(int selected, const char *title);
+int yati_editor_visible(void);
 void yati_list_begin(int history);
 void yati_list_add(int history, int index, const char *title, const char *subtitle, const char *detail);
 void yati_list_update_detail(int history, int index, const char *detail);

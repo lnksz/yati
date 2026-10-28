@@ -596,7 +596,12 @@ func TestDesktopInteraction(t *testing.T) {
 	openEditor()
 	x("type", "--clearmodifiers", "--delay", "0", "Discard this title")
 	chooseCurrentProject("firm")
-	x("key", "--clearmodifiers", "Escape")
+	// GTK may consume Escape to clear search and dismiss the picker first.
+	x("key", "--clearmodifiers", "space")
+	x("type", "--clearmodifiers", "--delay", "20", "api")
+	for attempt := 0; attempt < 3 && view().EditorVisible; attempt++ {
+		x("key", "--clearmodifiers", "Escape")
+	}
 	await("Escape cancels title and project edits", func() bool { return !view().EditorVisible })
 	x("windowfocus", "--sync", window)
 	assertEditedEntry(&project, before.Current.Description, 1)

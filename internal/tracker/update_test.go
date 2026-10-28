@@ -13,7 +13,9 @@ import (
 
 func TestUpdatePreservesRunningEntryAndHistory(t *testing.T) {
 	project := int64(7)
-	entry := toggl.TimeEntry{ID: 1, WorkspaceID: 42, Description: "Exact <description> & Überprüfen", Start: time.Now().Add(-time.Hour).Truncate(time.Second), Duration: -1, Tags: []string{"keep"}}
+	// JSON decodes a Z timestamp as time.UTC, which differs from time.Local
+	// even on UTC hosts. Keep the fixture canonical for the deep comparison.
+	entry := toggl.TimeEntry{ID: 1, WorkspaceID: 42, Description: "Exact <description> & Überprüfen", Start: time.Now().UTC().Add(-time.Hour).Truncate(time.Second), Duration: -1, Tags: []string{"keep"}}
 	backend := &fakeBackend{current: &entry, entries: []toggl.TimeEntry{entry, {ID: 2, WorkspaceID: 42, Duration: 120}}}
 	s := loadedService(t, backend)
 	for _, edit := range []struct {

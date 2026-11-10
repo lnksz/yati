@@ -155,11 +155,14 @@ case-insensitive and can occur anywhere in the name. Use Down/Up and Enter, or
 click a match, to select it.
 
 To edit the running task, click the edit icon beside **Stop**. The **Edit running
-task** window starts with its current title and project. Edit the title, choose an
-active project (or **No project**), then click **Save**. Pressing Enter in the title
-field also saves. Both changes update the existing entry while keeping its start
-time and elapsed timer. **Cancel** or Escape discards the edits. The project picker
-beside **Start new** still applies to new entries.
+task** window starts with its current title, start time, and project. Edit the
+fields and click **Save**, or press Enter in the title or start-time field. Start
+time includes the date and UTC offset, for example `2026-11-10 09:30:00 +01:00`;
+the displayed value uses your local time zone. Invalid dates and future times
+keep the editor open for correction. The existing timer keeps running, and its
+elapsed time and history reflect the corrected start. Leaving start time
+untouched preserves it exactly. **Cancel** or Escape discards the edits. The
+project picker beside **Start new** still applies to new entries.
 
 History includes today, the current Monday–Sunday
 week, and the current calendar month, using local calendar boundaries. Its total

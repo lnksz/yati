@@ -19,7 +19,7 @@ type fakeBackend struct {
 	calls    []string
 	failure  error
 	failStop bool
-	update   func(context.Context, int64, int64, *int64, string) (*toggl.TimeEntry, error)
+	update   func(context.Context, int64, int64, *int64, string, *time.Time) (*toggl.TimeEntry, error)
 }
 
 func (f *fakeBackend) Profile(context.Context) (*toggl.Me, error) {
@@ -57,16 +57,19 @@ func (f *fakeBackend) Stop(_ context.Context, workspace, id int64) (*toggl.TimeE
 	return &stopped, f.failure
 }
 
-func (f *fakeBackend) Update(ctx context.Context, workspace, id int64, project *int64, description string) (*toggl.TimeEntry, error) {
+func (f *fakeBackend) Update(ctx context.Context, workspace, id int64, project *int64, description string, start *time.Time) (*toggl.TimeEntry, error) {
 	f.calls = append(f.calls, "update")
 	if f.update != nil {
-		return f.update(ctx, workspace, id, project, description)
+		return f.update(ctx, workspace, id, project, description, start)
 	}
 	if f.current == nil || f.current.ID != id || f.current.WorkspaceID != workspace {
 		return nil, errors.New("unexpected entry to update")
 	}
 	entry := *f.current
 	entry.ProjectID, entry.Description = project, description
+	if start != nil {
+		entry.Start = *start
+	}
 	f.current = &entry
 	return &entry, nil
 }

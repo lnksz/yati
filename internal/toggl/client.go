@@ -169,14 +169,19 @@ func (c *Client) StopTimeEntry(workspaceID int64, timeEntryID int64) (*TimeEntry
 	return &entry, nil
 }
 
-// UpdateTimeEntry changes the title and project of an existing entry. An
-// explicit null clears the project; omitting it would leave it unchanged.
-func (c *Client) UpdateTimeEntry(workspaceID, timeEntryID int64, projectID *int64, description string) (*TimeEntry, error) {
+// UpdateTimeEntry changes an existing entry. A nil start preserves its start
+// time; an explicit null project clears its project.
+func (c *Client) UpdateTimeEntry(workspaceID, timeEntryID int64, projectID *int64, description string, start *time.Time) (*TimeEntry, error) {
+	if start != nil {
+		utc := start.UTC()
+		start = &utc
+	}
 	body := struct {
-		WorkspaceID int64  `json:"workspace_id"`
-		ProjectID   *int64 `json:"project_id"`
-		Description string `json:"description"`
-	}{workspaceID, projectID, description}
+		WorkspaceID int64      `json:"workspace_id"`
+		ProjectID   *int64     `json:"project_id"`
+		Description string     `json:"description"`
+		Start       *time.Time `json:"start,omitempty"`
+	}{workspaceID, projectID, description, start}
 	req, err := c.req(http.MethodPut, fmt.Sprintf("/workspaces/%d/time_entries/%d", workspaceID, timeEntryID), body)
 	if err != nil {
 		return nil, err

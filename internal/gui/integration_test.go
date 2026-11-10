@@ -88,7 +88,7 @@ func (f *desktopFixture) Stop(_ context.Context, workspace, id int64) (*toggl.Ti
 	f.current = nil
 	return &stopped, nil
 }
-func (f *desktopFixture) Update(_ context.Context, workspace, id int64, project *int64, description string) (*toggl.TimeEntry, error) {
+func (f *desktopFixture) Update(_ context.Context, workspace, id int64, project *int64, description string, start *time.Time) (*toggl.TimeEntry, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.current == nil || f.current.ID != id || f.current.WorkspaceID != workspace {
@@ -97,6 +97,9 @@ func (f *desktopFixture) Update(_ context.Context, workspace, id int64, project 
 	f.calls = append(f.calls, "update")
 	entry := *f.current
 	entry.ProjectID, entry.Description = project, description
+	if start != nil {
+		entry.Start = *start
+	}
 	f.current = &entry
 	f.entries = replaceFixtureEntry(f.entries, entry)
 	return &entry, nil
@@ -124,6 +127,7 @@ type fixtureView struct {
 	HistoryDetails   map[int64]string
 	ShortcutsVisible bool
 	EditorVisible    bool
+	EditorError      string
 }
 
 func (f *desktopFixture) View() (string, *dbus.Error) {
@@ -140,7 +144,7 @@ func (f *desktopFixture) View() (string, *dbus.Error) {
 		data, err := json.Marshal(fixtureView{Busy: f.app.busy, Page: f.app.page, Query: f.app.query,
 			Current: f.app.state().Current, Calls: calls, Error: f.app.errorText,
 			Width: width, Height: height, Transitioning: transitioning, HistoryDetails: details, ShortcutsVisible: nativeShortcutsVisible(),
-			EditorVisible: nativeEditorVisible()})
+			EditorVisible: nativeEditorVisible(), EditorError: nativeEditorError()})
 		if err != nil {
 			result <- "{}"
 		} else {
@@ -545,6 +549,7 @@ func TestDesktopInteraction(t *testing.T) {
 	x("type", "--clearmodifiers", "--delay", "0", "Preserve this draft")
 	await("draft before project edit", func() bool { return view().Query == "Preserve this draft" })
 	before := view()
+	expectedStart := before.Current.Start
 	openEditor := func() string {
 		t.Helper()
 		x("mousemove", "--window", window, "500", "107")
@@ -561,7 +566,7 @@ func TestDesktopInteraction(t *testing.T) {
 	}
 	chooseCurrentProject := func(query string) {
 		t.Helper()
-		x("key", "--clearmodifiers", "Tab", "space")
+		x("key", "--clearmodifiers", "Tab", "Tab", "space")
 		x("type", "--clearmodifiers", "--delay", "20", query)
 		x("sleep", "0.3")
 		x("key", "--clearmodifiers", "Down", "Return")
@@ -577,6 +582,7 @@ func TestDesktopInteraction(t *testing.T) {
 		v := view()
 		want := *before.Current
 		want.ProjectID, want.Description = project, title
+		want.Start = expectedStart
 		if v.Current == nil || v.Current.ID != want.ID || !v.Current.Start.Equal(want.Start) ||
 			v.Current.Duration != want.Duration || v.Current.Description != want.Description || !sameFixtureProject(v.Current.ProjectID, project) ||
 			v.Query != before.Query || v.Error != "" || len(v.Calls) != len(before.Calls)+updates {
@@ -633,6 +639,70 @@ func TestDesktopInteraction(t *testing.T) {
 	x("key", "--clearmodifiers", "BackSpace")
 	saveEdit()
 	assertEditedEntry(&project, "", 5)
+	// Cancel a start-time edit without modifying the running entry.
+	earlier := before.Current.Start.Add(-90 * time.Minute).UTC().Truncate(time.Second)
+	openEditor()
+	x("key", "--clearmodifiers", "Tab", "ctrl+a")
+	x("type", "--clearmodifiers", "--delay", "0", formatEditStart(earlier))
+	x("key", "--clearmodifiers", "Escape")
+	await("Escape discards start-time edit", func() bool { return !view().EditorVisible })
+	x("windowfocus", "--sync", window)
+	assertEditedEntry(&project, "", 5)
+	// Bad input must keep the editor and the entered values available to fix.
+	editor = openEditor()
+	x("key", "--clearmodifiers", "Tab", "ctrl+a")
+	x("type", "--clearmodifiers", "--delay", "0", "not a time")
+	x("key", "--clearmodifiers", "Return")
+	await("invalid start stays in editor", func() bool { v := view(); return v.EditorVisible && v.EditorError != "" })
+	assertEditedEntry(&project, "", 5)
+	x("key", "--clearmodifiers", "ctrl+a")
+	x("type", "--clearmodifiers", "--delay", "0", formatEditStart(time.Now().Add(time.Hour)))
+	x("key", "--clearmodifiers", "Return")
+	await("future start is rejected", func() bool { return strings.Contains(view().EditorError, "future") })
+	assertEditedEntry(&project, "", 5)
+	if path := os.Getenv("YATI_GUI_EVIDENCE"); path != "" {
+		x("sleep", "0.3") // Allow the validation message to resize and repaint the window.
+		if out, err := exec.CommandContext(ctx, "import", "-window", editor, filepath.Join(path, "edit-start-invalid.png")).CombinedOutput(); err != nil {
+			t.Fatalf("start validation screenshot: %v %s", err, out)
+		}
+	}
+	x("key", "--clearmodifiers", "ctrl+a")
+	x("type", "--clearmodifiers", "--delay", "0", formatEditStart(earlier))
+	x("key", "--clearmodifiers", "Return")
+	await("corrected start saves", func() bool { v := view(); return !v.Busy && !v.EditorVisible })
+	x("windowfocus", "--sync", window)
+	expectedStart = earlier
+	assertEditedEntry(&project, "", 6)
+	screenshot("start-time-updated")
+	// Save all three fields in one update, including moving start later again.
+	editor = openEditor()
+	x("type", "--clearmodifiers", "--delay", "0", "Corrected running task")
+	x("key", "--clearmodifiers", "Tab", "ctrl+a")
+	expectedStart = earlier.Add(30 * time.Minute)
+	x("type", "--clearmodifiers", "--delay", "0", formatEditStart(expectedStart))
+	x("key", "--clearmodifiers", "shift+Tab")
+	chooseCurrentProject("firm")
+	if path := os.Getenv("YATI_GUI_EVIDENCE"); path != "" {
+		if out, err := exec.CommandContext(ctx, "import", "-window", editor, filepath.Join(path, "edit-start-time.png")).CombinedOutput(); err != nil {
+			t.Fatalf("start editor screenshot: %v %s", err, out)
+		}
+	}
+	saveEdit()
+	firmware := int64(1)
+	assertEditedEntry(&firmware, "Corrected running task", 7)
+	x("key", "--clearmodifiers", "ctrl+l", "ctrl+a", "BackSpace", "ctrl+2")
+	await("history reflects the edited start", func() bool {
+		v := view()
+		if v.Page != "history" || v.Current == nil {
+			return false
+		}
+		now := time.Now()
+		day, _ := tracker.PeriodBounds("d", now)
+		if v.Current.Start.Before(day) {
+			return v.HistoryDetails[v.Current.ID] == ""
+		}
+		return v.HistoryDetails[v.Current.ID] == tracker.FormatDuration(tracker.EntryDuration(*v.Current, now))
+	})
 	if err := launch("quit").Run(); err != nil {
 		t.Fatalf("remote quit: %v", err)
 	}

@@ -16,6 +16,7 @@ static AdwToastOverlay *toasts;
 static GtkWidget *search, *start_button, *stop_button, *continue_button;
 static GtkWidget *current_row, *elapsed_label, *status_label, *spinner;
 static GtkWidget *edit_button, *edit_project_dropdown, *edit_title;
+static GtkWidget *edit_start, *edit_error;
 static GtkWidget *error_revealer, *error_label, *main_stack, *project_dropdown;
 static GtkWidget *recent_list, *history_list, *summary_label;
 static GtkWidget *token_entry, *remember_check, *connect_button, *autostart_check;
@@ -78,8 +79,13 @@ static gboolean close_window(GtkWindow *w, gpointer data) {
 
 static void editor_action(GtkButton *button, gpointer data) {
     (void)button;
-    gtk_widget_set_visible(GTK_WIDGET(editor_window), FALSE);
     if (data) event(YATI_UPDATE, (int)gtk_drop_down_get_selected(GTK_DROP_DOWN(edit_project_dropdown)), gtk_editable_get_text(GTK_EDITABLE(edit_title)));
+    else yati_editor_hide();
+}
+
+static void editor_start_changed(GtkEditable *editable, gpointer data) {
+    (void)editable; (void)data;
+    yati_editor_error("");
 }
 
 static gboolean editor_key(GtkEventControllerKey *controller, guint key, guint code, GdkModifierType modifiers, gpointer data) {
@@ -122,6 +128,20 @@ void yati_editor_begin(void) {
         gtk_entry_set_activates_default(GTK_ENTRY(edit_title), TRUE);
         gtk_accessible_update_property(GTK_ACCESSIBLE(edit_title), GTK_ACCESSIBLE_PROPERTY_LABEL, "Title for running task", -1);
         gtk_box_append(GTK_BOX(fields), edit_title);
+        gtk_box_append(GTK_BOX(fields), label("Start time", NULL));
+        edit_start = gtk_entry_new();
+        gtk_entry_set_activates_default(GTK_ENTRY(edit_start), TRUE);
+        gtk_accessible_update_property(GTK_ACCESSIBLE(edit_start), GTK_ACCESSIBLE_PROPERTY_LABEL, "Start time for running task", -1);
+        gtk_box_append(GTK_BOX(fields), edit_start);
+        GtkWidget *start_hint = label("Local date and time with UTC offset", "dim-label");
+        gtk_widget_add_css_class(start_hint, "caption");
+        gtk_label_set_wrap(GTK_LABEL(start_hint), TRUE);
+        gtk_box_append(GTK_BOX(fields), start_hint);
+        edit_error = label("", "error");
+        gtk_label_set_wrap(GTK_LABEL(edit_error), TRUE);
+        gtk_widget_set_visible(edit_error, FALSE);
+        gtk_box_append(GTK_BOX(fields), edit_error);
+        g_signal_connect(edit_start, "changed", G_CALLBACK(editor_start_changed), NULL);
         gtk_box_append(GTK_BOX(fields), label("Project", NULL));
         edit_project_names = gtk_string_list_new(NULL);
         GtkExpression *name = gtk_property_expression_new(GTK_TYPE_STRING_OBJECT, NULL, "string");
@@ -139,13 +159,26 @@ void yati_editor_begin(void) {
 }
 
 void yati_editor_project_add(const char *name) { gtk_string_list_append(edit_project_names, name); }
-void yati_editor_show(int selected, const char *title) {
+void yati_editor_show(int selected, const char *title, const char *start) {
     gtk_drop_down_set_selected(GTK_DROP_DOWN(edit_project_dropdown), selected);
     gtk_editable_set_text(GTK_EDITABLE(edit_title), title);
+    gtk_editable_set_text(GTK_EDITABLE(edit_start), start);
+    yati_editor_error("");
     gtk_window_present(editor_window);
     gtk_widget_grab_focus(edit_title);
     gtk_editable_select_region(GTK_EDITABLE(edit_title), 0, -1);
 }
+void yati_editor_hide(void) { gtk_widget_set_visible(GTK_WIDGET(editor_window), FALSE); }
+const char *yati_editor_start(void) { return gtk_editable_get_text(GTK_EDITABLE(edit_start)); }
+void yati_editor_error(const char *text) {
+    gtk_label_set_text(GTK_LABEL(edit_error), text);
+    gtk_widget_set_visible(edit_error, *text != '\0');
+    if (*text) {
+        gtk_widget_add_css_class(edit_start, "error");
+        gtk_widget_grab_focus(edit_start);
+    } else gtk_widget_remove_css_class(edit_start, "error");
+}
+const char *yati_editor_error_text(void) { return edit_error ? gtk_label_get_text(GTK_LABEL(edit_error)) : ""; }
 int yati_editor_visible(void) { return editor_window && gtk_widget_get_visible(GTK_WIDGET(editor_window)); }
 
 static void search_changed(GtkEditable *editable, gpointer data) {

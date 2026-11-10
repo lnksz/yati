@@ -5,17 +5,21 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
-func TestUpdateTimeEntryOnlyUpdatesExistingEntryTitleAndProject(t *testing.T) {
+func TestUpdateTimeEntryOnlyUpdatesExistingEntryFields(t *testing.T) {
 	project := int64(7)
+	start := time.Date(2026, time.November, 10, 9, 30, 0, 0, time.FixedZone("CET", 3600))
 	for _, edit := range []struct {
 		name, title string
 		project     *int64
+		start       *time.Time
 	}{
-		{"assign and rename", "Renamed <title> & Überprüfen", &project},
-		{"clear project", "Keep title", nil},
-		{"clear title", "", &project},
+		{"assign and rename", "Renamed <title> & Überprüfen", &project, nil},
+		{"clear project", "Keep title", nil, nil},
+		{"clear title", "", &project, nil},
+		{"change start", "Edited start", &project, &start},
 	} {
 		t.Run(edit.name, func(t *testing.T) {
 			requests := 0
@@ -36,8 +40,18 @@ func TestUpdateTimeEntryOnlyUpdatesExistingEntryTitleAndProject(t *testing.T) {
 				if err := json.Unmarshal(body["description"], &title); err != nil {
 					t.Error(err)
 				}
-				if len(body) != 3 || string(body["workspace_id"]) != "42" || string(body["project_id"]) != want || title != edit.title {
-					t.Errorf("title and project update body: %s", body)
+				fields := 3
+				if edit.start != nil {
+					fields++
+					var got string
+					if err := json.Unmarshal(body["start"], &got); err != nil || got != edit.start.UTC().Format(time.RFC3339Nano) {
+						t.Errorf("start was not sent in UTC: %s (%v)", body["start"], err)
+					}
+				} else if _, present := body["start"]; present {
+					t.Error("untouched start must be omitted")
+				}
+				if len(body) != fields || string(body["workspace_id"]) != "42" || string(body["project_id"]) != want || title != edit.title {
+					t.Errorf("entry update body: %s", body)
 				}
 				if err := json.NewEncoder(w).Encode(TimeEntry{ID: 123, WorkspaceID: 42, ProjectID: edit.project, Description: edit.title, Duration: -1}); err != nil {
 					t.Error(err)
@@ -46,7 +60,7 @@ func TestUpdateTimeEntryOnlyUpdatesExistingEntryTitleAndProject(t *testing.T) {
 			defer server.Close()
 			client := NewClient("test-token")
 			client.baseURL = server.URL
-			entry, err := client.UpdateTimeEntry(42, 123, edit.project, edit.title)
+			entry, err := client.UpdateTimeEntry(42, 123, edit.project, edit.title, edit.start)
 			if err != nil {
 				t.Fatal(err)
 			}

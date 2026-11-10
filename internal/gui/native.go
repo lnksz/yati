@@ -46,6 +46,7 @@ type desktopApp struct {
 	projects                                 []*int64
 	editProjects                             []*int64
 	editEntry                                int64
+	editStart                                time.Time
 	projectNames                             map[int64]string
 	recent                                   []tracker.Suggestion
 	history                                  []toggl.TimeEntry
@@ -207,9 +208,15 @@ func (a *desktopApp) event(action, index int, text string) {
 		if a.busy || a.service == nil || index < 0 || index >= len(a.editProjects) {
 			return
 		}
+		start, err := parseEditStart(C.GoString(C.yati_editor_start()), a.editStart, time.Now())
+		if err != nil {
+			ctext(err.Error(), func(message *C.char) { C.yati_editor_error(message) })
+			return
+		}
+		C.yati_editor_hide()
 		service, entry, project := a.service, a.editEntry, a.editProjects[index]
 		a.work("Updating task…", func(ctx context.Context) error {
-			return service.Update(ctx, entry, project, text)
+			return service.Update(ctx, entry, project, text, start)
 		}, func() { a.toast("Task updated") })
 	case C.YATI_CONTINUE:
 		if a.service == nil || a.busy {
@@ -446,6 +453,7 @@ func (a *desktopApp) editCurrent() {
 		return
 	}
 	a.editEntry, a.editProjects = entry.ID, []*int64{nil}
+	a.editStart = entry.Start
 	C.yati_editor_begin()
 	ctext("No project", func(text *C.char) { C.yati_editor_project_add(text) })
 	selected := 0
@@ -465,7 +473,9 @@ func (a *desktopApp) editCurrent() {
 		ctext(a.projectName(entry.ProjectID), func(text *C.char) { C.yati_editor_project_add(text) })
 		selected = len(a.editProjects) - 1
 	}
-	ctext(entry.Description, func(text *C.char) { C.yati_editor_show(C.int(selected), text) })
+	ctext(entry.Description, func(title *C.char) {
+		ctext(formatEditStart(entry.Start), func(start *C.char) { C.yati_editor_show(C.int(selected), title, start) })
+	})
 }
 
 func (a *desktopApp) renderLists() {
@@ -562,6 +572,8 @@ func nativeHistoryDetail(index int) string { return C.GoString(C.yati_list_detai
 func nativeShortcutsVisible() bool { return C.yati_help_visible() != 0 }
 
 func nativeEditorVisible() bool { return C.yati_editor_visible() != 0 }
+
+func nativeEditorError() string { return C.GoString(C.yati_editor_error_text()) }
 
 func (a *desktopApp) updateIconState(running bool) {
 	if a.iconState != nil && *a.iconState == running {

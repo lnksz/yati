@@ -119,6 +119,8 @@ type fixtureView struct {
 	Page             string
 	Query            string
 	Current          *toggl.TimeEntry
+	Entries          []toggl.TimeEntry
+	Today            string
 	Calls            []string
 	Error            string
 	Width            int
@@ -141,8 +143,9 @@ func (f *desktopFixture) View() (string, *dbus.Error) {
 		for i, entry := range f.app.history {
 			details[entry.ID] = nativeHistoryDetail(i)
 		}
+		state := f.app.state()
 		data, err := json.Marshal(fixtureView{Busy: f.app.busy, Page: f.app.page, Query: f.app.query,
-			Current: f.app.state().Current, Calls: calls, Error: f.app.errorText,
+			Current: state.Current, Entries: state.Entries, Today: nativeToday(), Calls: calls, Error: f.app.errorText,
 			Width: width, Height: height, Transitioning: transitioning, HistoryDetails: details, ShortcutsVisible: nativeShortcutsVisible(),
 			EditorVisible: nativeEditorVisible(), EditorError: nativeEditorError()})
 		if err != nil {
@@ -304,7 +307,26 @@ func TestDesktopInteraction(t *testing.T) {
 			}
 		}
 	}
+	awaitToday := func() {
+		t.Helper()
+		await("logged-today total matches all daily entries", func() bool {
+			v := view()
+			now := time.Now()
+			totalAt := func(at time.Time) string {
+				var total time.Duration
+				for _, entry := range v.Entries {
+					if entry.Start.Local().Format(time.DateOnly) == at.Format(time.DateOnly) {
+						total += tracker.EntryDuration(entry, at)
+					}
+				}
+				return "Logged today · " + tracker.FormatDuration(total)
+			}
+			// The displayed total updates once per second, at the last timer tick.
+			return !v.Busy && (v.Today == totalAt(now) || v.Today == totalAt(now.Add(-time.Second)))
+		})
+	}
 	await("initial state", func() bool { v := view(); return !v.Busy && v.Current != nil })
+	awaitToday()
 	var window string
 	await("visible GTK window", func() bool {
 		output, err := exec.CommandContext(ctx, "xdotool", "search", "--onlyvisible", "--name", "^Yati$").Output()
@@ -405,6 +427,7 @@ func TestDesktopInteraction(t *testing.T) {
 	x("key", "--clearmodifiers", "ctrl+l")
 	x("type", "--clearmodifiers", "--delay", "0", "OAuth")
 	await("local autocomplete", func() bool { return view().Query == "OAuth" })
+	awaitToday() // The daily total is independent of the search filter.
 	x("key", "--clearmodifiers", "Return")
 	await("resume preserves project", func() bool {
 		v := view()
@@ -415,6 +438,7 @@ func TestDesktopInteraction(t *testing.T) {
 	}
 	x("key", "--clearmodifiers", "ctrl+s")
 	await("stop keyboard action", func() bool { v := view(); return !v.Busy && v.Current == nil })
+	awaitToday()
 	awaitIcon(false)
 	x("key", "--clearmodifiers", "ctrl+l")
 	x("type", "--clearmodifiers", "--delay", "0", "Unrelated search")
@@ -448,10 +472,21 @@ func TestDesktopInteraction(t *testing.T) {
 	if view().Query != "A newer draft" {
 		t.Fatal("start completion erased a newer draft")
 	}
+	awaitToday()
+	dailyBefore := view().Today
+	await("daily total advances with the running timer", func() bool {
+		v := view()
+		if v.Busy || v.Current == nil {
+			return false
+		}
+		return v.Today != dailyBefore || v.Current.Start.Local().Format(time.DateOnly) != time.Now().Format(time.DateOnly)
+	})
+	awaitToday()
 	x("key", "--clearmodifiers", "ctrl+l", "ctrl+a", "BackSpace")
 	await("clear history filter", func() bool { return view().Query == "" })
 	x("key", "--clearmodifiers", "ctrl+2")
 	await("history view", func() bool { v := view(); return v.Page == "history" && !v.Transitioning })
+	awaitToday()
 	currentID := view().Current.ID
 	detail := view().HistoryDetails[currentID]
 	if detail == "" {
@@ -593,6 +628,7 @@ func TestDesktopInteraction(t *testing.T) {
 				t.Fatalf("edit stopped or started a timer: %v", v.Calls)
 			}
 		}
+		awaitToday()
 	}
 	openEditor()
 	chooseCurrentProject("api")

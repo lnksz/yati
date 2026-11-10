@@ -112,6 +112,27 @@ func EntryDuration(entry toggl.TimeEntry, now time.Time) time.Duration {
 	return max(0, time.Duration(entry.Duration)*time.Second)
 }
 
+// TodayDuration matches the TUI's daily total: all entries started on the current
+// local date, including live running time. Current replaces its cached row.
+func TodayDuration(entries []toggl.TimeEntry, current *toggl.TimeEntry, now time.Time) time.Duration {
+	start, end := PeriodBounds("d", now)
+	var total time.Duration
+	add := func(entry toggl.TimeEntry) {
+		if !entry.Start.Before(start) && entry.Start.Before(end) {
+			total += EntryDuration(entry, now)
+		}
+	}
+	for _, entry := range entries {
+		if current == nil || entry.ID != current.ID {
+			add(entry)
+		}
+	}
+	if current != nil {
+		add(*current)
+	}
+	return total
+}
+
 // FormatDuration formats durations without wrapping hours at 24.
 func FormatDuration(duration time.Duration) string {
 	seconds := int64(max(0, duration) / time.Second)

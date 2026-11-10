@@ -19,6 +19,7 @@ static GtkWidget *edit_button, *edit_project_dropdown, *edit_title;
 static GtkWidget *edit_start, *edit_error;
 static GtkWidget *error_revealer, *error_label, *main_stack, *project_dropdown;
 static GtkWidget *recent_list, *history_list, *summary_label;
+static GtkWidget *today_label;
 static GtkWidget *token_entry, *remember_check, *connect_button, *autostart_check;
 static GtkStringList *project_names;
 static GtkStringList *edit_project_names;
@@ -534,7 +535,12 @@ static void startup(GApplication *application, gpointer data) {
     status_label = label("Connecting to Toggl…", "caption");
     gtk_widget_add_css_class(status_label, "dim-label");
     gtk_label_set_ellipsize(GTK_LABEL(status_label), PANGO_ELLIPSIZE_END);
+    gtk_widget_set_hexpand(status_label, TRUE);
     gtk_box_append(GTK_BOX(status), status_label);
+    today_label = label("Logged today · —", "heading");
+    gtk_widget_add_css_class(today_label, "numeric");
+    gtk_widget_set_tooltip_text(today_label, "All entries started today in your local time zone, including running time");
+    gtk_box_append(GTK_BOX(status), today_label);
     gtk_box_append(GTK_BOX(content), status);
 
     GtkEventController *keys = gtk_event_controller_key_new();
@@ -693,6 +699,8 @@ void yati_list_end(int history, const char *empty) {
     if (first) gtk_list_box_select_row(list, first);
 }
 void yati_set_summary(const char *text) { gtk_label_set_text(GTK_LABEL(summary_label), text); }
+void yati_set_today(const char *text) { gtk_label_set_text(GTK_LABEL(today_label), text); }
+const char *yati_today(void) { return gtk_label_get_text(GTK_LABEL(today_label)); }
 void yati_toast(const char *text) { adw_toast_overlay_add_toast(toasts, adw_toast_new(text)); }
 int yati_width(void) { return gtk_widget_get_width(GTK_WIDGET(window)); }
 int yati_height(void) { return gtk_widget_get_height(GTK_WIDGET(window)); }

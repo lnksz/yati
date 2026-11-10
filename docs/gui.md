@@ -164,6 +164,12 @@ elapsed time and history reflect the corrected start. Leaving start time
 untouched preserves it exactly. **Cancel** or Escape discards the edits. The
 project picker beside **Start new** still applies to new entries.
 
+**Logged today** stays visible below both Quick entry and History. Like the TUI's
+daily total, it sums all entries started on the current local date across
+workspaces, including the running timer. It updates locally each second and
+after starting, stopping, or editing a task. Search and the History period do not
+change this daily total.
+
 History includes today, the current Monday–Sunday
 week, and the current calendar month, using local calendar boundaries. Its total
 reflects the current search, matching the TUI's filtering behavior. Recent-task

@@ -395,11 +395,12 @@ func (a *desktopApp) render() {
 
 func (a *desktopApp) renderCurrent() {
 	state := a.state()
+	now := time.Now()
 	a.updateIconState(state.Current != nil)
 	title, subtitle, elapsed := "No timer running", "Start a task below or continue your last entry.", ""
 	if entry := state.Current; entry != nil {
 		title, subtitle = entryTitle(entry.Description), a.projectName(entry.ProjectID)
-		elapsed = tracker.FormatDuration(tracker.EntryDuration(*entry, time.Now()))
+		elapsed = tracker.FormatDuration(tracker.EntryDuration(*entry, now))
 	}
 	ctext(title, func(t *C.char) {
 		ctext(subtitle, func(s *C.char) {
@@ -408,6 +409,11 @@ func (a *desktopApp) renderCurrent() {
 			})
 		})
 	})
+	today := "Logged today · —"
+	if state.Profile.ID != 0 {
+		today = "Logged today · " + tracker.FormatDuration(tracker.TodayDuration(state.Entries, state.Current, now))
+	}
+	ctext(today, func(text *C.char) { C.yati_set_today(text) })
 }
 
 func (a *desktopApp) projectName(id *int64) string {
@@ -574,6 +580,8 @@ func nativeShortcutsVisible() bool { return C.yati_help_visible() != 0 }
 func nativeEditorVisible() bool { return C.yati_editor_visible() != 0 }
 
 func nativeEditorError() string { return C.GoString(C.yati_editor_error_text()) }
+
+func nativeToday() string { return C.GoString(C.yati_today()) }
 
 func (a *desktopApp) updateIconState(running bool) {
 	if a.iconState != nil && *a.iconState == running {

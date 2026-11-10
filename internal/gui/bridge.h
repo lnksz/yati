@@ -41,6 +41,8 @@ void yati_list_update_detail(int history, int index, const char *detail);
 const char *yati_list_detail(int history, int index);
 void yati_list_end(int history, const char *empty);
 void yati_set_summary(const char *text);
+void yati_set_today(const char *text);
+const char *yati_today(void);
 void yati_toast(const char *text);
 int yati_width(void);
 int yati_height(void);

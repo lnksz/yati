@@ -62,6 +62,14 @@ func InstallDesktop(autostart bool) error {
 	if err != nil {
 		return err
 	}
+	// An AppImage launcher must outlive the temporary directory containing Yati.
+	if appDir := os.Getenv("APPDIR"); filepath.IsAbs(appDir) && executable == filepath.Join(appDir, "usr", "bin", "yati") {
+		if appImage := os.Getenv("APPIMAGE"); filepath.IsAbs(appImage) {
+			executable = appImage
+		} else {
+			executable = filepath.Join(appDir, "AppRun")
+		}
+	}
 	return installDesktopAt(executable, autostart)
 }
 

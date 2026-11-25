@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Yati
+Comment=Start, stop, and continue Toggl entries
+Exec=yati gui
+Icon=io.github.kristof.yati
+Terminal=false
+Categories=Office;
+StartupNotify=true

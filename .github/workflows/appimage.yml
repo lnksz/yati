@@ -1,0 +1,44 @@
+name: AppImage
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  appimage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install packaging and smoke test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config libgtk-4-dev libadwaita-1-dev \
+            dconf-gsettings-backend libgdk-pixbuf2.0-bin librsvg2-common desktop-file-utils \
+            shared-mime-info dbus-daemon xvfb xauth xdotool
+
+      - name: Build AppImage
+        run: sh scripts/build-appimage.sh
+
+      - name: Smoke-test AppImage
+        run: sh scripts/test-appimage.sh
+
+      - uses: actions/upload-artifact@v7
+        with:
+          path: tmp/appimage/Yati-x86_64.AppImage
+          archive: false
+          if-no-files-found: error

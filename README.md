@@ -6,6 +6,21 @@ A native Linux desktop window and tray icon are also available with `yati gui`.
 Bind `yati gui --toggle` to a global desktop shortcut for quick entry from
 anywhere. See [desktop setup, controls, and build instructions](docs/gui.md).
 
+The AppImage workflow builds `Yati-x86_64.AppImage` on Ubuntu 24.04, bundling
+GTK4 and libadwaita. Download it from the **Artifacts** section of a successful
+[AppImage workflow run](https://github.com/lnksz/yati/actions/workflows/appimage.yml).
+
+```sh
+chmod +x Yati-x86_64.AppImage
+./Yati-x86_64.AppImage
+```
+
+Running it without arguments opens the desktop window. Pass the usual Yati
+arguments to use the CLI or configure desktop integration.
+
+On a system without FUSE, run `./Yati-x86_64.AppImage --appimage-extract`
+followed by `./squashfs-root/AppRun`.
+
 - [x] short and sweet for simple tasks
     - [x] sane auth support
         - [x] env var
